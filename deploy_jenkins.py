@@ -32,8 +32,7 @@ def find_release_version():
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     next_version_raw = versionPattern.search(xml).groups()
     if len(next_version_raw) != 3:
-        print("Couldn't find next version to deploy")
-        raise
+        raise Exception("Couldn't find next version to deploy")
     return Version(*map(int, next_version_raw))
 
 # String -> None
@@ -43,7 +42,7 @@ def inc_version_number(job_name):
     next_hotfix_raw = versionPattern.search(xml).groups()
 
     if len(next_hotfix_raw) != 3:
-        raise
+        raise Exception("Couldn't parse version")
     next_hotfix_version = Version(*map(int, next_version_raw))
     next_minor_version = next_hotfix_version.get_next_minor_release()
     xml.replace("VERSION={}".format(next_hotfix_version.full_string()),
@@ -67,7 +66,7 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
     next_hotfix_raw = versionPattern.search(xml).groups()
 
     if len(next_hotfix_raw) != 3:
-        raise
+        raise Exception("Couldn't parse version")
 
     tag_name_version = Version(*map(int, next_version_raw)).get_last_hotfix().full_string()
 
@@ -86,7 +85,7 @@ def set_build_numbers(new_version):
 
 def update_build_number(base_job, increment_by):
     current_build_number = j.get_job_info(base_job)['nextBuildNumber']
-    f = open('nextBuildNumber', 'w')
+    f = open('nextBuildNumber', 'w', encoding='utf-8')
     f.write(str(current_build_number + increment_by))
     f.close()
     subprocess.call('scp nextBuildNumber {0}@{1}:/var/lib/jenkins/jobs/{2}/nextBuildNumber'.format(server_user, main_jenkins_server, base_job))
