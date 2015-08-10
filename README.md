@@ -1,2 +1,2 @@
-# mobile-deploy
-deploy scripts for commcare mobile
+# Automated deploy scripts for CommCare
+Work in progress...
