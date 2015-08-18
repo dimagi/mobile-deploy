@@ -105,8 +105,8 @@ def replace_build_prop(file_contents):
         next_version_raw = map(int, version)
         next_version_raw[-1] = next_version_raw[-1] + 1
         next_version = Version(next_version_raw[0], next_version_raw[1], 0)
-    return file_contents.replace('app.version={}'.format(next_version.full_string()),
-            'app.version={}'.format(next_version.get_next_minor_release.full_string()))
+    return file_contents.replace('app.version={}'.format(next_version),
+            'app.version={}'.format(next_version.get_next_minor_release))
 
 # String -> String
 def replace_config_engine_version(file_contents):

@@ -4,7 +4,7 @@ class Version:
         self.minor = minor
         self.hotfix = hotfix
 
-    def full_string(self):
+    def __str__(self):
         return "{0}.{1}.{2}".format(self.major, self.minor, self.hotfix)
 
     def short_string(self):
