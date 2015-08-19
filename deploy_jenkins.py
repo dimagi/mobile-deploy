@@ -21,7 +21,7 @@ server_user = 'pmates'
 
 # None -> String
 def create_new_release_jobs():
-    version = find_release_version()
+    version = get_next_release_version()
 
     last_release = version.get_last_version_short()
     for job_root in job_roots:
@@ -34,7 +34,7 @@ def create_new_release_jobs():
     return version.short_string()
 
 # None -> Version
-def find_release_version():
+def get_next_release_version():
     """
     Reads the version number off of the commcare-mobile job, which should be
     set to the next release.
@@ -43,6 +43,28 @@ def find_release_version():
 
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
+    if len(current_version_raw) != 3:
+        raise Exception("Couldn't find next version to deploy")
+    return Version(*map(int, current_version_raw))
+
+# None -> Version
+def get_staged_release_version():
+    """
+    Reads the version number off of the commcare-mobile job, and use
+    it to find the latest release job commcare-mobile-X.XX, from
+    which the hotfix version can be loaded.
+    """
+    master_xml = j.get_job_config('commcare-mobile')
+
+    versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
+    next_version_raw = versionPattern.search(master_xml).groups()
+    if len(next_version_raw) != 3:
+        raise Exception("Couldn't find next version to deploy")
+    next_version = Version(*map(int, next_version_raw))
+
+    staged_release_job = 'commcare-mobile-{}'.format(next_version.get_last_version_short())
+    release_xml = j.get_job_config(staged_release_job )
+    current_version_raw = versionPattern.search(release_xml).groups()
     if len(current_version_raw) != 3:
         raise Exception("Couldn't find next version to deploy")
     return Version(*map(int, current_version_raw))
@@ -134,7 +156,43 @@ def inc_minor_version(job_name):
 
     j.reconfig_job(job_name, xml)
 
+# String -> None
+def inc_hotfix_version(version):
+    job_name = "commcare-mobile-{}".format(version.short_string())
+    xml = j.get_job_config(job_name)
+    versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
+    current_version_raw = versionPattern.search(xml).groups()
+
+    if len(current_version_raw) != 3:
+        raise Exception("Couldn't parse version")
+    current_version = Version(*map(int, current_version_raw))
+    next_hotfix_version = current_version.get_next_hotfix()
+
+    print('changing {} version reference {} to {}'.format(job_name, current_version, next_hotfix_version))
+
+    xml = xml.replace("VERSION={}".format(current_version), "VERSION={}".format(next_hotfix_version))
+
+    j.reconfig_job(job_name, xml)
+
+
 def update_job_with_hotfix(current_version):
     return
 
-create_new_release_jobs()
+# String String -> None
+def make_release_jobs_use_tags(branch, tag):
+    for job_root in job_roots:
+        make_release_job_use_tag(job_root, branch, tag)
+
+# String Version String -> None
+def make_release_job_use_tag(base_job_name, branch, tag):
+    job_name = '{}-{}'.format(base_job_name, last_release)
+
+    print("update {} to build off tag {}".format(job_name, tag))
+
+    xml = j.get_job_config(job_name)
+    xml = xml.replace("refs/heads/{}".format(branch),
+            "refs/tags/{}".format(tag))
+
+    j.reconfig_job(job_name, xml)
+
+#create_new_release_jobs()

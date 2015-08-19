@@ -1,24 +1,48 @@
 #!/bin/python
 import subprocess, os, re
-
-branch_base = 'commcare_'
+from version import Version
 
 repos = ['javarosa', 'commcare', 'commcare-odk']
 
-# String -> None
-def create_new_branches(version):
-    if unstagedChangesPresent():
+# String Version -> String
+def schedule_minor_release(branch_base, version):
+    branch_name = "{}{}".format(branch_base, version.short_string())
+    tag_name = "{}{}".format(branch_name, version)
+
+    mark_version_as_release(branch_name)
+    create_tag_from_branch(branch_name, tag_name)
+    return tag_name
+
+def create_tag_from_branch(branch_name, tag_name):
+    for repo in repos:
+        os.chdir(repo)
+        subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
+        subprocess.call('git pull', shell=True)
+        subprocess.call('git tag {}'.format(tag_name), shell=True)
+        subprocess.call('git push origin {}'.format(tag_name), shell=True)
+        os.chdir('../')
+
+def schedule_hotfix_release(branch_base, version):
+    branch_name = "{}{}".format(branch_base, version.short_string())
+    tag_name = "{}{}".format(branch_name, version)
+    create_tag_from_branch(branch_name, tag_name)
+
+# String String -> None
+def create_new_branches(branch_base, version):
+    if unstaged_changes_present():
         raise Exception("one of the branches has unstaged changes, please stash and try again")
-    pullMasters()
+    pull_masters()
 
     branch_name = "{}{}".format(branch_base, version)
-    if branchExistsInRepos(branch_name):
+    if branch_exists_in_repos(branch_name):
         raise Exception("commcare_{} branch already exists".format(version))
 
-    createReleaseBranches(version)
-    updateVersionNumbers()
+    create_release_branches(branch_name)
+    update_version_numbers()
+    mark_version_as_alpha(branch_name)
 
-def unstagedChangesPresent():
+# None -> Boolean
+def unstaged_changes_present():
     for repo in repos:
         os.chdir(repo)
         if b'' != subprocess.check_output("git status -s | sed '/^??/d'", shell=True):
@@ -26,19 +50,22 @@ def unstagedChangesPresent():
         os.chdir('../')
     return False
 
-def pullMasters():
+# None -> None
+def pull_masters():
     for repo in repos:
         os.chdir(repo)
         subprocess.call('git pull origin master', shell=True)
         os.chdir('../')
 
-def branchExistsInRepos(branch_name):
-    for x in [branchExists(repo, branch_name) for repo in repos]:
+# String -> Boolean
+def branch_exists_in_repos(branch_name):
+    for x in [branch_exists(repo, branch_name) for repo in repos]:
         if x:
             return True
     return False
 
-def branchExists(child_directory, branch_name):
+# String String -> Boolean
+def branch_exists(child_directory, branch_name):
     os.chdir(child_directory)
     try:
         subprocess.check_output('git show-ref ' + branch_name, shell=True)
@@ -48,18 +75,21 @@ def branchExists(child_directory, branch_name):
     finally:
         os.chdir('../')
 
-def createReleaseBranches(branch_name):
+# String -> None
+def create_release_branches(branch_name):
     for repo in repos:
         os.chdir(repo)
         subprocess.call('git checkout -b ' + branch_name, shell=True)
         subprocess.call('git push origin ' + branch_name, shell=True)
         os.chdir('../')
 
-def updateVersionNumbers():
-    updateCommCareVersionNumbers()
-    updateOdkVersionNumbers()
+# None -> None
+def update_version_numbers():
+    update_commcare_version_numbers()
+    update_odk_version_numbers()
 
-def updateCommCareVersionNumbers():
+# None -> None
+def update_commcare_version_numbers():
     os.chdir('commcare')
     subprocess.call('git checkout master', shell=True)
 
@@ -67,9 +97,9 @@ def updateCommCareVersionNumbers():
     replace_func(replace_config_engine_version,
             'util/src/org/commcare/util/CommCareConfigEngine.java')
 
-    subprocess.call('git add -u', shell=True)
-    subprocess.call("git commit -m 'Automated version bump'", shell=True)
-    subprocess.call("git push origin master", shell=True)
+    # subprocess.call('git add -u', shell=True)
+    # subprocess.call("git commit -m 'Automated version bump'", shell=True)
+    # subprocess.call("git push origin master", shell=True)
     os.chdir('../')
 
 # (String -> String) String -> None
@@ -94,54 +124,57 @@ def replace_func(func, file_name):
 def replace_build_prop(file_contents):
     versionPattern = re.compile(r'app.version=(\d+).(\d+).(\d+)')
     result = versionPattern.search(file_contents)
-    if result != None:
-        version = result.groups()
-        next_version_raw = map(int, version)
-        next_version_raw[-1] = next_version_raw[-1] + 1
-        next_version = Version(*next_version_raw)
-    else:
-        versionPattern = re.compile(r'app.version=(\d+).(\d+)$')
-        version = versionPattern.search(file_contents).groups()
-        next_version_raw = map(int, version)
-        next_version_raw[-1] = next_version_raw[-1] + 1
-        next_version = Version(next_version_raw[0], next_version_raw[1], 0)
+    if result == None or len(result.groups()) != 3:
+        raise Exception("Couldn't parse version in build.properties")
+
+    version = result.groups()
+    next_version_raw = list(map(int, version))
+    next_version = Version(*next_version_raw)
+
+    print('build.properties: replacing {} with {}'.format(next_version, next_version.get_next_minor_release()))
     return file_contents.replace('app.version={}'.format(next_version),
-            'app.version={}'.format(next_version.get_next_minor_release))
+            'app.version={}'.format(next_version.get_next_minor_release()))
+
 
 # String -> String
 def replace_config_engine_version(file_contents):
     versionPattern = re.compile(r'CommCarePlatform\((\d+), (\d+)\)')
     result = versionPattern.search(file_contents)
-    if result == None:
-        raise Exception("Couldn't parse version")
-    version = versionPattern.search(file_contents).groups()
-    next_version_raw = map(int, version)
-    next_version_raw[-1] = next_version_raw[-1] + 1
-    next_version = Version(next_version_raw[0], next_version_raw[1], 0)
+    if result == None or len(result.groups()) != 2:
+        raise Exception("Couldn't parse version in CommCareConfigEngine")
+    version_raw = result.groups()
+    major = int(version_raw[0])
+    minor = int(version_raw[1])
 
-    return file_contents.replace('CommCarePlatform({}, {})'.format(next_version.major, next_version.minor), 'CommCarePlatform({}, {})'.format(next_version.major, next_version.minor + 1))
+    print('CommCareConfigEngine: replacing {} with {}'.format(
+        'CommCarePlatform({}, {})'.format(major, minor),
+        'CommCarePlatform({}, {})'.format(major, minor + 1)))
 
-def updateOdkVersionNumbers():
+    return file_contents.replace('CommCarePlatform({}, {})'.format(major, minor), 'CommCarePlatform({}, {})'.format(major, minor + 1))
+
+# None -> None
+def update_odk_version_numbers():
     os.chdir('commcare-odk')
     subprocess.call('git checkout master', shell=True)
 
-    replace_func(update_manifest_version, 'app/AndroidManifest')
+    replace_func(update_manifest_version, 'app/AndroidManifest.xml')
 
-    subprocess.call('git add -u', shell=True)
-    subprocess.call("git commit -m 'Automated version bump'", shell=True)
-    subprocess.call("git push origin master", shell=True)
+    # subprocess.call('git add -u', shell=True)
+    # subprocess.call("git commit -m 'Automated version bump'", shell=True)
+    # subprocess.call("git push origin master", shell=True)
     os.chdir('../')
 
 # String -> String
 def update_manifest_version(file_contents):
     versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
     result = versionPattern.search(file_contents)
-    if result == None:
+    if result == None or len(result.groups()) != 2:
         raise
-    version = versionPattern.search(file_contents).groups()
-    next_version = map(int, version)
-    current_version = 'android:versionName="{}.{}"'.format(next_version[0], next_version[1])
-    next_version = 'android:versionName="{}.{}"'.format(next_version[0], next_version[1] + 1)
+    version = result.groups()
+    major = int(version[0])
+    minor = int(version[1])
+    current_version = 'android:versionName="{}.{}"'.format(major, minor)
+    next_version = 'android:versionName="{}.{}"'.format(major, minor + 1)
     return file_contents.replace(current_version, next_version)
 
 # String -> None
@@ -180,3 +213,41 @@ def update_resource_string_version():
     write_file.close()
 
     os.rename(tmp_file_name, file_name)
+
+# String -> None
+def mark_version_as_alpha(branch_name):
+    os.chdir('commcare')
+    subprocess.call('git checkout {}'.format(branch_name), shell=True)
+    replace_func(set_dev_tag_to_alpha, 'application/build.properties')
+    subprocess.call('git add -u', shell=True)
+    subprocess.call("git commit -m 'Automated commit adding dev tag to commcare version'", shell=True)
+    subprocess.call("git push origin {}".format(branch_name), shell=True)
+
+# String -> String
+def set_dev_tag_to_alpha(file_contents):
+    existing_version_tag = 'commcare.version=v${app.version}dev'
+    new_version_tag = 'commcare.version=v${app.version}alpha'
+
+    if file_contents.find(existing_version_tag) == -1:
+        raise Exception("unable to find dev version tag in build.properties")
+
+    return file_contents.replace(existing_version_tag, new_version_tag)
+
+# String -> None
+def mark_version_as_release(branch_name):
+    os.chdir('commcare')
+    subprocess.call('git checkout {}'.format(branch_name), shell=True)
+    replace_func(set_dev_tag_to_release, 'application/build.properties')
+    subprocess.call('git add -u', shell=True)
+    subprocess.call("git commit -m 'Automated commit removing alpha tag from commcare version'", shell=True)
+    subprocess.call("git push origin {}".format(branch_name), shell=True)
+
+# String -> String
+def set_dev_tag_to_release(file_contents):
+    existing_version_tag = 'commcare.version=v${app.version}alpha'
+    new_version_tag = 'commcare.version=v${app.version}'
+
+    if file_contents.find(existing_version_tag) == -1:
+        raise Exception("unable to find alpha version tag in build.properties")
+
+    return file_contents.replace(existing_version_tag, new_version_tag)
