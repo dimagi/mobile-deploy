@@ -21,6 +21,10 @@ server_user = 'pmates'
 
 # None -> String
 def create_new_release_jobs():
+    """
+    Copy last releases jenkins jobs and update values to mirror the release
+    being staged.
+    """
     version = get_next_release_version()
 
     last_release = version.get_last_version_short()
@@ -36,7 +40,7 @@ def create_new_release_jobs():
 # None -> Version
 def get_next_release_version():
     """
-    Reads the version number off of the commcare-mobile job, which should be
+    Reads the version number off of the 'commcare-mobile' job, which should be
     set to the next release.
     """
     xml = j.get_job_config('commcare-mobile')
@@ -106,41 +110,71 @@ def get_old_git_tag(xml):
 
 # Version -> None
 def set_build_numbers(new_version):
-    update_build_number('commcare-mobile', new_version, 1)
-    update_build_number('commcare-odk', new_version, 1)
-    update_build_number('commcare-mobile', 2000)
-    update_build_number('commcare-odk', 2000)
+    """
+    Update next build number for new release jobs by 1 and master jobs by 2000.
+    """
+    update_release_build_number('commcare-mobile', new_version, 1)
+    update_release_build_number('commcare-odk', new_version, 1)
+    update_master_build_number('commcare-mobile', 2000)
+    update_master_build_number('commcare-odk', 2000)
 
 # String Version Integer -> None
-def update_build_number(job_base, current_version, increment_by):
+def update_release_build_number(job_base, current_version, increment_by):
     old_job = '{}-{}'.format(job_base, current_version.get_last_version_short())
-    new_job = '{}-{}'.format(job_base, current_version.short_string())
     current_build_number = j.get_job_info(old_job)['nextBuildNumber']
+
+    new_job = '{}-{}'.format(job_base, current_version.short_string())
 
     print('build number for {}: {}'.format(old_job, current_build_number))
 
-    f = open('nextBuildNumber', 'w', encoding='utf-8')
     next_build_number = int(current_build_number) + increment_by
-    f.write('{}\n'.format(next_build_number))
-    f.close()
-
-    try:
-        subprocess.call('scp nextBuildNumber {0}@{1}:/var/lib/jenkins/jobs/{2}/nextBuildNumber'.format(server_user, main_jenkins_server, new_job), shell=True)
-    except Exception:
-        print('Failed setting nextBuildNumber for {}'.format(new_job))
-        print("Please manually set {}'s nextBuildNumber to {} at \n http://jenkins.dimagi.com/job/{}/nextbuildnumber/".format(new_job, next_build_number, new_job))
+    create_next_build_number_file(next_build_number)
+    upload_next_build_number(new_job, next_build_number)
 
     os.remove('nextBuildNumber')
 
+# String Integer -> None
+def update_master_build_number(job_name, increment_by):
+    current_build_number = j.get_job_info(job_name)['nextBuildNumber']
+
+    print('build number for {}: {}'.format(job_name, current_build_number))
+
+    next_build_number = int(current_build_number) + increment_by
+    create_next_build_number_file(next_build_number)
+    upload_next_build_number(job_name, next_build_number)
+
+    os.remove('nextBuildNumber')
+
+def create_next_build_number_file(next_build_number):
+    f = open('nextBuildNumber', 'w', encoding='utf-8')
+    f.write('{}\n'.format(next_build_number))
+    f.close()
+
+def upload_next_build_number(job_name, next_build_number):
+    try:
+        subprocess.call('scp nextBuildNumber {0}@{1}:/var/lib/jenkins/jobs/{2}/nextBuildNumber'.format(server_user, main_jenkins_server, job_name), shell=True)
+    except Exception:
+        print('Failed setting nextBuildNumber for {}'.format(job_name))
+        print("Please manually set {}'s nextBuildNumber to {} at \n http://jenkins.dimagi.com/job/{}/nextbuildnumber/".format(job_name, next_build_number, job_name))
+        return
+
     # make jenkins read the build number change from memory
-    reload_job_into_jenkins_memory(new_job)
+    reload_job_into_jenkins_memory(job_name)
+
 
 def reload_job_into_jenkins_memory(job_name):
+    """
+    Force jenkins to reload a job config from memory. Necessary if config
+    files, such as nextBuildNumber, have changed.
+    """
     xml = j.get_job_config(job_name)
     j.reconfig_job(job_name, xml)
 
 # String -> None
 def inc_minor_version(job_name):
+    """
+    Bump the VERSION build parameter by a minor version.
+    """
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
@@ -158,6 +192,9 @@ def inc_minor_version(job_name):
 
 # String -> None
 def inc_hotfix_version(version):
+    """
+    Bump the VERSION build parameter of a release job by a hotfix version.
+    """
     job_name = "commcare-mobile-{}".format(version.short_string())
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
