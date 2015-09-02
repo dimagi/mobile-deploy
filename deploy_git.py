@@ -48,8 +48,8 @@ def branch_exists_in_repos(branch_name):
 def branch_exists(child_directory, branch_name):
     chdir_repo(child_directory)
     try:
-        subprocess.check_output('git show-ref ' + branch_name, shell=True)
-        return True
+        result = subprocess.check_output('git show-ref {}'.format(branch_name), shell=True)
+        return str(result).find('remotes/origin/{}'.format(branch_name)) != -1
     except subprocess.CalledProcessError:
         return False
     finally:
@@ -61,7 +61,7 @@ def create_release_branches(branch_name):
         chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
-        subprocess.call('git push origin {}'.format(branch_name), shell=True)
+        # subprocess.call('git push origin {}'.format(branch_name), shell=True)
         chdir_base()
 
 # None -> None
@@ -92,11 +92,11 @@ def review_and_commit_changes(branch, commit_msg):
     diff = subprocess.check_output("git diff", shell=True)
     print(diff)
 
-    if prompt_until_answer('Proceed by pushing diff to {}?: [Y/n]'.format(branch), true):
+    if prompt_until_answer('Proceed by pushing diff to {}?'.format(branch), True):
         subprocess.call('git add -u', shell=True)
         subprocess.call("git commit -m {}".format(commit_msg),
                 shell=True)
-        subprocess.call("git push origin {}".format(branch), shell=True)
+        # subprocess.call("git push origin {}".format(branch), shell=True)
     else:
         print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
         exit(0)
@@ -279,7 +279,7 @@ def create_tag_from_branch(branch_name, tag_name):
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
         subprocess.call('git pull', shell=True)
         subprocess.call('git tag {}'.format(tag_name), shell=True)
-        subprocess.call('git push origin {}'.format(tag_name), shell=True)
+        # subprocess.call('git push origin {}'.format(tag_name), shell=True)
         chdir_base()
 
 def schedule_hotfix_release(branch_base, version):

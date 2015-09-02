@@ -20,8 +20,10 @@ def create_new_release_jobs():
 
     last_release = version.get_last_version_short()
 
-    verify_value_with_user("Are these values correct?: last release: {}, this release {}".format(version, last_release),
-            "According to you, release versions scraped from jenkins are incorrect.")
+    verify_value_with_user("Are these values correct?: last release: {}, this release {}".format(last_release, version),
+            "According to you, release versions read from jenkins are incorrect.")
+
+    assert_jobs_dont_exist(version)
 
     for job_root in job_roots:
         create_new_release_job(job_root, last_release, version)
@@ -46,27 +48,12 @@ def get_next_release_version():
         raise Exception("Couldn't find next version to deploy")
     return Version(*map(int, current_version_raw))
 
-# None -> Version
-def get_staged_release_version():
-    """
-    Reads the version number off of the commcare-mobile job, and use
-    it to find the latest release job commcare-mobile-X.XX, from
-    which the hotfix version can be loaded.
-    """
-    master_xml = j.get_job_config('commcare-mobile')
-
-    versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
-    next_version_raw = versionPattern.search(master_xml).groups()
-    if len(next_version_raw) != 3:
-        raise Exception("Couldn't find next version to deploy")
-    next_version = Version(*map(int, next_version_raw))
-
-    staged_release_job = 'commcare-mobile-{}'.format(next_version.get_last_version_short())
-    release_xml = j.get_job_config(staged_release_job )
-    current_version_raw = versionPattern.search(release_xml).groups()
-    if len(current_version_raw) != 3:
-        raise Exception("Couldn't find next version to deploy")
-    return Version(*map(int, current_version_raw))
+# Version -> None
+def assert_jobs_dont_exist(version):
+    for job_root in job_roots:
+        job = '{}-{}'.format(job_root, version.short_string())
+        if j.job_exists(job):
+            raise Exception("'{}' jenkins job already exists".format(job))
 
 # String String Version -> None
 def create_new_release_job(base_job_name, last_release, new_release_version):
@@ -121,9 +108,12 @@ def update_release_build_number(job_base, current_version, increment_by):
 
     new_job = '{}-{}'.format(job_base, current_version.short_string())
 
-    print('INFO: build number for {}: {}'.format(old_job, current_build_number))
 
     next_build_number = int(current_build_number) + increment_by
+
+    print('INFO:\t{} build number: {}'.format(old_job, current_build_number))
+    print('\t\t setting {} build number to {}'.format(new_job, next_build_number))
+
     create_next_build_number_file(next_build_number)
     upload_next_build_number(new_job, next_build_number)
 
@@ -133,9 +123,10 @@ def update_release_build_number(job_base, current_version, increment_by):
 def update_master_build_number(job_name, increment_by):
     current_build_number = j.get_job_info(job_name)['nextBuildNumber']
 
-    print('build number for {}: {}'.format(job_name, current_build_number))
-
     next_build_number = int(current_build_number) + increment_by
+
+    print('INFO:\tupdating {} build number from {} to {}'.format(job_name, current_build_number, next_build_number))
+
     create_next_build_number_file(next_build_number)
     upload_next_build_number(job_name, next_build_number)
 
@@ -229,4 +220,25 @@ def make_release_job_use_tag(base_job_name, branch, tag):
 
     j.reconfig_job(job_name, xml)
 
-#create_new_release_jobs()
+# None -> Version
+def get_staged_release_version():
+    """
+    Reads the version number off of the commcare-mobile job, and use
+    it to find the latest release job commcare-mobile-X.XX, from
+    which the hotfix version can be loaded.
+    """
+    master_xml = j.get_job_config('commcare-mobile')
+
+    versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
+    next_version_raw = versionPattern.search(master_xml).groups()
+    if len(next_version_raw) != 3:
+        raise Exception("Couldn't find next version to deploy")
+    next_version = Version(*map(int, next_version_raw))
+
+    staged_release_job = 'commcare-mobile-{}'.format(next_version.get_last_version_short())
+    release_xml = j.get_job_config(staged_release_job )
+    current_version_raw = versionPattern.search(release_xml).groups()
+    if len(current_version_raw) != 3:
+        raise Exception("Couldn't find next version to deploy")
+    return Version(*map(int, current_version_raw))
+
