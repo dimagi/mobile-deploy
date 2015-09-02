@@ -81,6 +81,7 @@ def branch_exists(child_directory, branch_name):
 def create_release_branches(branch_name):
     for repo in repos:
         os.chdir(repo)
+        subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b ' + branch_name, shell=True)
         subprocess.call('git push origin ' + branch_name, shell=True)
         os.chdir('../')
@@ -92,17 +93,48 @@ def update_version_numbers():
 
 # None -> None
 def update_commcare_version_numbers():
-    os.chdir('commcare')
+    """
+    Update version numbers in build.properties and CommCareConfigEngin on
+    master.
+    """
+    chdir_repo('commcare')
     subprocess.call('git checkout master', shell=True)
 
-    replace_func(replace_build_prop, 'application/build.properties')
+    replace_func(replace_build_prop,
+            'application/build.properties')
     replace_func(replace_config_engine_version,
             'util/src/org/commcare/util/CommCareConfigEngine.java')
 
-    # subprocess.call('git add -u', shell=True)
-    # subprocess.call("git commit -m 'Automated version bump'", shell=True)
-    # subprocess.call("git push origin master", shell=True)
-    os.chdir('../')
+    review_and_commit_changes('master',
+            'Automated version bump')
+    chdir_base()
+
+# String String -> None
+def review_and_commit_changes(branch, commit_msg):
+    diff = subprocess.check_output("git diff", shell=True)
+    print(diff)
+
+    if prompt_until_answer('Proceed by pushing diff to {}?: [Y/n]'.format(branch), true):
+        subprocess.call('git add -u', shell=True)
+        subprocess.call("git commit -m {}".format(commit_msg),
+                shell=True)
+        subprocess.call("git push origin {}".format(branch),
+                shell=True)
+    else:
+        print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
+        exit(0)
+
+# String Boolean -> Boolean
+def prompt_until_answer(msg, is_first_prompting):
+    if is_first_prompting:
+        to_proceed = input(msg)
+    else:
+        to_proceed = input("Please answer with 'y' or 'n'")
+    if to_proceed == '' or to_proceed.lower() == 'y':
+        return True
+    elif to_proceed.lower() == 'n':
+        return False
+    return prompt_until_answer(msg, false)
 
 # (String -> String) String -> None
 def replace_func(func, file_name):
@@ -156,15 +188,18 @@ def replace_config_engine_version(file_contents):
 
 # None -> None
 def update_odk_version_numbers():
-    os.chdir('commcare-odk')
+    """
+    Update version numbers in AndroidManifest and push master.
+    """
+    chdir_repo('commcare-odk')
     subprocess.call('git checkout master', shell=True)
 
     replace_func(update_manifest_version, 'app/AndroidManifest.xml')
+    update_resource_string_version()
 
-    # subprocess.call('git add -u', shell=True)
-    # subprocess.call("git commit -m 'Automated version bump'", shell=True)
-    # subprocess.call("git push origin master", shell=True)
-    os.chdir('../')
+    review_and_commit_changes('master', 'Automated version bump')
+
+    chdir_base()
 
 # String -> String
 def update_manifest_version(file_contents):
@@ -181,6 +216,13 @@ def update_manifest_version(file_contents):
 
 # String -> None
 def update_resource_string_version():
+    """ Update version in strings.xml. requires special logic because the
+    version numbers are on different lines: 
+    <integer-array name="commcare_version">
+        <item>2</item>
+        <item>22</item>
+    </integer-array>
+    """
     file_name = 'app/res/values/strings.xml'
     tmp_file_name = '{}.new'.format(file_name)
     read_file = open(file_name, 'r', encoding='utf-8')
@@ -199,7 +241,7 @@ def update_resource_string_version():
                 raise Exception("couldn't parse version")
             version = int(versionPattern.search(file_contents).groups()[0])
             line = "<item>{}</item>\n".format(version + 1)
-            on_version_line = 42
+            on_version_line = -1
         elif on_version_line == 0:
             # major version
             on_version_line = 1
@@ -221,9 +263,9 @@ def mark_version_as_alpha(branch_name):
     os.chdir('commcare')
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     replace_func(set_dev_tag_to_alpha, 'application/build.properties')
-    subprocess.call('git add -u', shell=True)
-    subprocess.call("git commit -m 'Automated commit adding dev tag to commcare version'", shell=True)
-    subprocess.call("git push origin {}".format(branch_name), shell=True)
+
+    review_and_commit_changes(branch_name, 
+            'Automated commit adding dev tag to commcare version')
 
 # String -> String
 def set_dev_tag_to_alpha(file_contents):
