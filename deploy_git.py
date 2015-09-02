@@ -1,6 +1,8 @@
 #!/bin/python
 import subprocess, os, re
+
 from version import Version
+import deploy_config as conf
 
 repos = ['javarosa', 'commcare', 'commcare-odk']
 
@@ -15,12 +17,12 @@ def schedule_minor_release(branch_base, version):
 
 def create_tag_from_branch(branch_name, tag_name):
     for repo in repos:
-        os.chdir(repo)
+        chdir_repo(repo)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
         subprocess.call('git pull', shell=True)
         subprocess.call('git tag {}'.format(tag_name), shell=True)
         subprocess.call('git push origin {}'.format(tag_name), shell=True)
-        os.chdir('../')
+        chdir_base()
 
 def schedule_hotfix_release(branch_base, version):
     branch_name = "{}{}".format(branch_base, version.short_string())
@@ -44,18 +46,18 @@ def create_new_branches(branch_base, version):
 # None -> Boolean
 def unstaged_changes_present():
     for repo in repos:
-        os.chdir(repo)
+        chdir_repo(repo)
         if b'' != subprocess.check_output("git status -s | sed '/^??/d'", shell=True):
             return True
-        os.chdir('../')
+        chdir_base()
     return False
 
 # None -> None
 def pull_masters():
     for repo in repos:
-        os.chdir(repo)
+        chdir_repo(repo)
         subprocess.call('git pull origin master', shell=True)
-        os.chdir('../')
+        chdir_base()
 
 # String -> Boolean
 def branch_exists_in_repos(branch_name):
@@ -66,14 +68,14 @@ def branch_exists_in_repos(branch_name):
 
 # String String -> Boolean
 def branch_exists(child_directory, branch_name):
-    os.chdir(child_directory)
+    chdir_repo(child_directory)
     try:
         subprocess.check_output('git show-ref ' + branch_name, shell=True)
         return True
     except subprocess.CalledProcessError:
         return False
     finally:
-        os.chdir('../')
+        chdir_base()
 
 # String -> None
 def create_release_branches(branch_name):
@@ -251,3 +253,11 @@ def set_dev_tag_to_release(file_contents):
         raise Exception("unable to find alpha version tag in build.properties")
 
     return file_contents.replace(existing_version_tag, new_version_tag)
+
+# String -> None
+def chdir_repo(repo):
+    os.chdir(os.path.join(conf.BASE_DIR, repo))
+
+# None -> None
+def chdir_base():
+    os.chdir(conf.BASE_DIR)

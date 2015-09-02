@@ -3,21 +3,11 @@ import jenkins, re
 import subprocess, os
 
 from version import Version
+import deploy_config as conf
 
-USER = ''
-PASSWORD = ''
-
-if USER == '' or PASSWORD == '':
-    f = open('.auth', 'r')
-    USER = f.readline().rstrip()
-    PASSWORD = f.readline().rstrip()
-    f.close()
-
-j = jenkins.Jenkins('http://jenkins.dimagi.com', USER, PASSWORD)
+j = jenkins.Jenkins('http://jenkins.dimagi.com', conf.JENKINS_USER, conf.JENKINS_PASSWORD)
 
 job_roots = ['javarosa-core-library', 'commcare-mobile', 'commcare-odk']
-main_jenkins_server = '162.242.212.212'
-server_user = 'pmates'
 
 # None -> String
 def create_new_release_jobs():
@@ -152,7 +142,7 @@ def create_next_build_number_file(next_build_number):
 
 def upload_next_build_number(job_name, next_build_number):
     try:
-        subprocess.call('scp nextBuildNumber {0}@{1}:/var/lib/jenkins/jobs/{2}/nextBuildNumber'.format(server_user, main_jenkins_server, job_name), shell=True)
+        subprocess.call('scp nextBuildNumber {0}@{1}:/var/lib/jenkins/jobs/{2}/nextBuildNumber'.format(conf.BUILD_SERVER_USER, conf.BUILD_SERVER, job_name), shell=True)
     except Exception:
         print('Failed setting nextBuildNumber for {}'.format(job_name))
         print("Please manually set {}'s nextBuildNumber to {} at \n http://jenkins.dimagi.com/job/{}/nextbuildnumber/".format(job_name, next_build_number, job_name))
