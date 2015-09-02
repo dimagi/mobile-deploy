@@ -4,6 +4,12 @@ import deploy_jenkins, deploy_git
 
 BRANCH_BASE = "commcare_"
 
+HELP_MSG = """
+'create' cuts the release branch and creates the release jobs.
+'release' creates release tags and updates jenkins job to use it.
+'help' prints this message."""
+
+
 def create_release():
     """
     Cuts release git branches from master and creates new jenkins release jobs.
@@ -52,3 +58,17 @@ def deploy_hotfix():
     version = deploy_jenkins.get_staged_release_version()
     tag = deploy_git.schedule_hotfix_release(BRANCH_BASE, version)
     deploy_jenkins.inc_hotfix_version(version)
+
+def main():
+    print(sys.argv)
+    command = sys.argv[1]
+    if command == 'create':
+        create_release()
+    elif command == 'release':
+        deploy_release()
+    elif command == 'help':
+        print(HELP_MSG)
+
+
+if __name__ == "__main__":
+    main()
