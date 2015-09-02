@@ -60,8 +60,8 @@ def create_release_branches(branch_name):
     for repo in repos:
         chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
-        subprocess.call('git checkout -b ' + branch_name, shell=True)
-        subprocess.call('git push origin ' + branch_name, shell=True)
+        subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
+        subprocess.call('git push origin {}'.format(branch_name), shell=True)
         chdir_base()
 
 # None -> None
@@ -96,8 +96,7 @@ def review_and_commit_changes(branch, commit_msg):
         subprocess.call('git add -u', shell=True)
         subprocess.call("git commit -m {}".format(commit_msg),
                 shell=True)
-        subprocess.call("git push origin {}".format(branch),
-                shell=True)
+        subprocess.call("git push origin {}".format(branch), shell=True)
     else:
         print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
         exit(0)
