@@ -133,7 +133,7 @@ def update_master_build_number(job_name, increment_by):
     os.remove('nextBuildNumber')
 
 def create_next_build_number_file(next_build_number):
-    f = open('nextBuildNumber', 'w', encoding='utf-8')
+    f = open('nextBuildNumber', 'w', encoding='utf-8', newline='\n')
     f.write('{}\n'.format(next_build_number))
     f.close()
 

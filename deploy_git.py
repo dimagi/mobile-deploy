@@ -1,5 +1,5 @@
 #!/bin/python
-import subprocess, os, re
+import subprocess, os, re, sys
 
 from version import Version
 from user_interaction import prompt_until_answer
@@ -62,6 +62,7 @@ def create_release_branches(branch_name):
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
         # subprocess.call('git push origin {}'.format(branch_name), shell=True)
+        subprocess.call('git checkout master', shell=True)
         chdir_base()
 
 # None -> None
@@ -90,22 +91,27 @@ def update_commcare_version_numbers():
 # String String -> None
 def review_and_commit_changes(branch, commit_msg):
     diff = subprocess.check_output("git diff", shell=True)
-    print(diff)
+    print_with_newlines(str(diff))
 
     if prompt_until_answer('Proceed by pushing diff to {}?'.format(branch), True):
         subprocess.call('git add -u', shell=True)
-        subprocess.call("git commit -m {}".format(commit_msg),
+        subprocess.call("git commit -m '{}'".format(commit_msg),
                 shell=True)
         # subprocess.call("git push origin {}".format(branch), shell=True)
     else:
         print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
-        exit(0)
+        sys.exit(0)
+
+# String -> None
+def print_with_newlines(msg):
+    for line in msg.split('\\n'):
+        print(line)
 
 # (String -> String) String -> None
 def replace_func(func, file_name):
     tmp_file_name = '{}.new'.format(file_name)
     read_file = open(file_name, 'r', encoding='utf-8')
-    write_file = open(tmp_file_name, 'w', encoding='utf-8')
+    write_file = open(tmp_file_name, 'w', encoding='utf-8', newline='\n')
 
     file_contents = ''
     for line in read_file.readlines():
@@ -130,7 +136,7 @@ def replace_build_prop(file_contents):
     next_version_raw = list(map(int, version))
     next_version = Version(*next_version_raw)
 
-    print('build.properties: replacing {} with {}'.format(next_version, next_version.get_next_minor_release()))
+    print('commcare build.properties: replacing {} with {}'.format(next_version, next_version.get_next_minor_release()))
     return file_contents.replace('app.version={}'.format(next_version),
             'app.version={}'.format(next_version.get_next_minor_release()))
 
@@ -191,7 +197,7 @@ def update_resource_string_version():
     file_name = 'app/res/values/strings.xml'
     tmp_file_name = '{}.new'.format(file_name)
     read_file = open(file_name, 'r', encoding='utf-8')
-    write_file = open(tmp_file_name, 'w', encoding='utf-8')
+    write_file = open(tmp_file_name, 'w', encoding='utf-8', newline='\n')
 
     file_contents = ''
 
@@ -231,6 +237,7 @@ def mark_version_as_alpha(branch_name):
 
     review_and_commit_changes(branch_name, 
             'Automated commit adding dev tag to commcare version')
+    subprocess.call('git checkout master', shell=True)
     chdir_base()
 
 # String -> String

@@ -1,3 +1,4 @@
+import sys
 
 # String Boolean -> Boolean
 def prompt_until_answer(msg, is_first_prompting):
@@ -16,5 +17,5 @@ def prompt_until_answer(msg, is_first_prompting):
 def verify_value_with_user(verify_msg, exit_msg):
     if not prompt_until_answer(verify_msg, True):
         print(exit_msg)
-        exit(0)
+        sys.exit(0)
 
