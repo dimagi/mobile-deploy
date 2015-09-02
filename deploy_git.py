@@ -2,35 +2,13 @@
 import subprocess, os, re
 
 from version import Version
+from user_interaction import prompt_until_answer
 import deploy_config as conf
 
 repos = ['javarosa', 'commcare', 'commcare-odk']
 
-# String Version -> String
-def schedule_minor_release(branch_base, version):
-    branch_name = "{}{}".format(branch_base, version.short_string())
-    tag_name = "{}{}".format(branch_name, version)
-
-    mark_version_as_release(branch_name)
-    create_tag_from_branch(branch_name, tag_name)
-    return tag_name
-
-def create_tag_from_branch(branch_name, tag_name):
-    for repo in repos:
-        chdir_repo(repo)
-        subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
-        subprocess.call('git pull', shell=True)
-        subprocess.call('git tag {}'.format(tag_name), shell=True)
-        subprocess.call('git push origin {}'.format(tag_name), shell=True)
-        chdir_base()
-
-def schedule_hotfix_release(branch_base, version):
-    branch_name = "{}{}".format(branch_base, version.short_string())
-    tag_name = "{}{}".format(branch_name, version)
-    create_tag_from_branch(branch_name, tag_name)
-
 # String String -> None
-def create_new_branches(branch_base, version):
+def create_branches_and_update_versions(branch_base, version):
     if unstaged_changes_present():
         raise Exception("one of the branches has unstaged changes, please stash and try again")
     pull_masters()
@@ -80,11 +58,11 @@ def branch_exists(child_directory, branch_name):
 # String -> None
 def create_release_branches(branch_name):
     for repo in repos:
-        os.chdir(repo)
+        chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b ' + branch_name, shell=True)
         subprocess.call('git push origin ' + branch_name, shell=True)
-        os.chdir('../')
+        chdir_base()
 
 # None -> None
 def update_version_numbers():
@@ -123,18 +101,6 @@ def review_and_commit_changes(branch, commit_msg):
     else:
         print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
         exit(0)
-
-# String Boolean -> Boolean
-def prompt_until_answer(msg, is_first_prompting):
-    if is_first_prompting:
-        to_proceed = input(msg)
-    else:
-        to_proceed = input("Please answer with 'y' or 'n'")
-    if to_proceed == '' or to_proceed.lower() == 'y':
-        return True
-    elif to_proceed.lower() == 'n':
-        return False
-    return prompt_until_answer(msg, false)
 
 # (String -> String) String -> None
 def replace_func(func, file_name):
@@ -260,12 +226,13 @@ def update_resource_string_version():
 
 # String -> None
 def mark_version_as_alpha(branch_name):
-    os.chdir('commcare')
+    chdir_repo('commcare')
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     replace_func(set_dev_tag_to_alpha, 'application/build.properties')
 
     review_and_commit_changes(branch_name, 
             'Automated commit adding dev tag to commcare version')
+    chdir_base()
 
 # String -> String
 def set_dev_tag_to_alpha(file_contents):
@@ -277,14 +244,25 @@ def set_dev_tag_to_alpha(file_contents):
 
     return file_contents.replace(existing_version_tag, new_version_tag)
 
+# String Version -> String
+def schedule_minor_release(branch_base, version):
+    branch_name = "{}{}".format(branch_base, version.short_string())
+    tag_name = "{}{}".format(branch_name, version)
+
+    mark_version_as_release(branch_name)
+    create_tag_from_branch(branch_name, tag_name)
+    return tag_name
+
 # String -> None
 def mark_version_as_release(branch_name):
-    os.chdir('commcare')
+    chdir_repo('commcare')
+
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
+
     replace_func(set_dev_tag_to_release, 'application/build.properties')
-    subprocess.call('git add -u', shell=True)
-    subprocess.call("git commit -m 'Automated commit removing alpha tag from commcare version'", shell=True)
-    subprocess.call("git push origin {}".format(branch_name), shell=True)
+    review_and_commit_changes(branch_name, 'Automated commit removing alpha tag from commcare version')
+
+    chdir_base()
 
 # String -> String
 def set_dev_tag_to_release(file_contents):
@@ -295,6 +273,21 @@ def set_dev_tag_to_release(file_contents):
         raise Exception("unable to find alpha version tag in build.properties")
 
     return file_contents.replace(existing_version_tag, new_version_tag)
+
+def create_tag_from_branch(branch_name, tag_name):
+    for repo in repos:
+        chdir_repo(repo)
+        subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
+        subprocess.call('git pull', shell=True)
+        subprocess.call('git tag {}'.format(tag_name), shell=True)
+        subprocess.call('git push origin {}'.format(tag_name), shell=True)
+        chdir_base()
+
+def schedule_hotfix_release(branch_base, version):
+    branch_name = "{}{}".format(branch_base, version.short_string())
+    tag_name = "{}{}".format(branch_name, version)
+    create_tag_from_branch(branch_name, tag_name)
+
 
 # String -> None
 def chdir_repo(repo):

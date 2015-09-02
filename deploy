@@ -1,11 +1,12 @@
 #!/bin/python
 
+import sys
+
 import deploy_jenkins, deploy_git
 
 BRANCH_BASE = "commcare_"
 
-HELP_MSG = """
-'create' cuts the release branch and creates the release jobs.
+HELP_MSG = """'create' cuts the release branch and creates the release jobs.
 'release' creates release tags and updates jenkins job to use it.
 'help' prints this message."""
 
@@ -15,7 +16,7 @@ def create_release():
     Cuts release git branches from master and creates new jenkins release jobs.
     """
     version = deploy_jenkins.create_new_release_jobs()
-    deploy_git.create_new_branches(BRANCH_BASE, version)
+    deploy_git.create_branches_and_update_versions(BRANCH_BASE, version)
 
 def deploy_release():
     """
@@ -60,8 +61,12 @@ def deploy_hotfix():
     deploy_jenkins.inc_hotfix_version(version)
 
 def main():
-    print(sys.argv)
+    if len(sys.argv) > 2:
+        print("{} only accepts one argument, {} provided".format(sys.argv[0], len(sys.argv) - 1))
+        exit(0)
+
     command = sys.argv[1]
+
     if command == 'create':
         create_release()
     elif command == 'release':

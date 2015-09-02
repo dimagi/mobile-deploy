@@ -1,4 +1,4 @@
-import ConfigParser from configparser
+from configparser import ConfigParser
 
 config = ConfigParser()
 config.read("deploy.conf")

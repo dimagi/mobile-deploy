@@ -3,6 +3,7 @@ import jenkins, re
 import subprocess, os
 
 from version import Version
+from user_interaction import verify_value_with_user
 import deploy_config as conf
 
 j = jenkins.Jenkins('http://jenkins.dimagi.com', conf.JENKINS_USER, conf.JENKINS_PASSWORD)
@@ -18,6 +19,10 @@ def create_new_release_jobs():
     version = get_next_release_version()
 
     last_release = version.get_last_version_short()
+
+    verify_value_with_user("Are these values correct?: last release: {}, this release {}".format(version, last_release),
+            "According to you, release versions scraped from jenkins are incorrect.")
+
     for job_root in job_roots:
         create_new_release_job(job_root, last_release, version)
 
@@ -66,11 +71,12 @@ def get_staged_release_version():
 # String String Version -> None
 def create_new_release_job(base_job_name, last_release, new_release_version):
     last_release_job_name = '{}-{}'.format(base_job_name, last_release)
-    print("last release job name: {}".format(last_release_job_name))
     xml = j.get_job_config(last_release_job_name)
 
     new_version = new_release_version.short_string()
-    print("new version short: {}".format(new_version))
+    new_release_job_name = '{}-{}'.format(base_job_name, new_version)
+
+    print("creating new job '{}' from old job '{}'".format(new_release_job_name, last_release_job_name)) 
 
     xml = replace_references_to_old_jobs(xml, last_release, new_version)
 
@@ -79,7 +85,6 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
 
     xml = xml.replace(old_tag_name, 'refs/heads/commcare_{}'.format(new_version))
 
-    new_release_job_name = '{}-{}'.format(base_job_name, new_version)
     j.create_job(new_release_job_name, xml)
 
 def replace_references_to_old_jobs(xml, last_release, new_version):
@@ -103,6 +108,7 @@ def set_build_numbers(new_version):
     """
     Update next build number for new release jobs by 1 and master jobs by 2000.
     """
+    print("updating build numbers on jenkins jobs")
     update_release_build_number('commcare-mobile', new_version, 1)
     update_release_build_number('commcare-odk', new_version, 1)
     update_master_build_number('commcare-mobile', 2000)
@@ -115,7 +121,7 @@ def update_release_build_number(job_base, current_version, increment_by):
 
     new_job = '{}-{}'.format(job_base, current_version.short_string())
 
-    print('build number for {}: {}'.format(old_job, current_build_number))
+    print('INFO: build number for {}: {}'.format(old_job, current_build_number))
 
     next_build_number = int(current_build_number) + increment_by
     create_next_build_number_file(next_build_number)
@@ -165,6 +171,7 @@ def inc_minor_version(job_name):
     """
     Bump the VERSION build parameter by a minor version.
     """
+    print("Incrementing the minor version number on {} jenkins job".format(job_name))
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
