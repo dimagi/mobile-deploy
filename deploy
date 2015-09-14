@@ -6,8 +6,9 @@ import deploy_jenkins, deploy_git
 
 BRANCH_BASE = "commcare_"
 
-HELP_MSG = """'create' cuts the release branch and creates the release jobs.
+HELP_MSG = """'create' creates the release branches and jobs.
 'release' creates release tags and updates jenkins job to use it.
+'finalize' updates jenkins hotfix version number and deletes release branch
 'help' prints this message."""
 
 
@@ -24,25 +25,30 @@ def deploy_release():
     build from that tag.
     """
     version = deploy_jenkins.get_staged_release_version()
-    tag = deploy_git.schedule_minor_release(BRANCH_BASE, version)
-    branch = '{}{}'.format(BRANCH_BASE, version.short_string())
-    deploy_jenkins.make_release_jobs_use_tags(branch, tag)
-    print("Now go name the resulting build to {} and mark it to keep around forever".format(tag))
-    print("Then run update_hotfix_release_version")
 
-def update_hotfix_release_version():
+    tag = deploy_git.create_release_tags(BRANCH_BASE, version)
+    branch = '{}{}'.format(BRANCH_BASE, version.short_string())
+    deploy_jenkins.make_release_jobs_use_tags(version, branch, tag)
+    deploy_jenkins.build_release(version)
+    print("Run 'deploy finalize' builds are locked in")
+
+def deploy_finalize():
     """
-    Increments the hotfix number on the latest commcare-mobile release job so
-    it is ready for the next hotfix.
+    Increment the hotfix version on commcare-mobile-X.XX in prep for building
+    hotfix. Also removes local release branches.
     """
     version = deploy_jenkins.get_staged_release_version()
     deploy_jenkins.inc_hotfix_version(version)
+    branch = '{}{}'.format(BRANCH_BASE, version.short_string())
+    deploy_git.close_branches(branch)
+
 
 def create_hotfix():
     """
     Re-open release branch from latest release branch and update release jobs
     to build against those branches.
     """
+    # TODO: check that hotfix version was bumped correctly during deploy_release
     version = deploy_jenkins.get_staged_release_version()
 
     old_tag = "{}{}".format(BRANCH_BASE, version.get_last_hotfix())
@@ -71,6 +77,8 @@ def main():
         create_release()
     elif command == 'release':
         deploy_release()
+    elif command == 'finalize':
+        deploy_finalize()
     elif command == 'help':
         print(HELP_MSG)
 

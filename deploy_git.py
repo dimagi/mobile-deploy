@@ -61,7 +61,7 @@ def create_release_branches(branch_name):
         chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
-        # subprocess.call('git push origin {}'.format(branch_name), shell=True)
+        subprocess.call('git push origin {}'.format(branch_name), shell=True)
         subprocess.call('git checkout master', shell=True)
         chdir_base()
 
@@ -97,7 +97,7 @@ def review_and_commit_changes(branch, commit_msg):
         subprocess.call('git add -u', shell=True)
         subprocess.call("git commit -m '{}'".format(commit_msg),
                 shell=True)
-        # subprocess.call("git push origin {}".format(branch), shell=True)
+        subprocess.call("git push origin {}".format(branch), shell=True)
     else:
         print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
         sys.exit(0)
@@ -251,12 +251,20 @@ def set_dev_tag_to_alpha(file_contents):
     return file_contents.replace(existing_version_tag, new_version_tag)
 
 # String Version -> String
-def schedule_minor_release(branch_base, version):
+def create_release_tags(branch_base, version):
+    if unstaged_changes_present():
+        raise Exception("one of the branches has unstaged changes, please stash and try again")
+
     branch_name = "{}{}".format(branch_base, version.short_string())
     tag_name = "{}{}".format(branch_name, version)
 
+    if not branch_exists_in_repos(branch_name):
+        raise Exception("{} branch doesn't exist".format(branch_name))
+
     mark_version_as_release(branch_name)
+    add_hotfix_version_to_odk(branch_name, 0)
     create_tag_from_branch(branch_name, tag_name)
+
     return tag_name
 
 # String -> None
@@ -280,13 +288,51 @@ def set_dev_tag_to_release(file_contents):
 
     return file_contents.replace(existing_version_tag, new_version_tag)
 
+# String Integer -> None
+def add_hotfix_version_to_odk(branch_name, hotfix_count):
+    chdir_repo('commcare-odk')
+
+    subprocess.call('git checkout {}'.format(branch_name), shell=True)
+
+    replace_func(set_hotfix_version_to_zero, 'apps/AndroidManifest.xml')
+    review_and_commit_changes(branch_name, 'Automated commit adding hotfix version to AndroidManifest.xml')
+
+    chdir_base()
+
+# String -> String
+def set_hotfix_version_to_zero(file_contents):
+    versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
+    result = versionPattern.search(file_contents)
+    if result == None or len(result.groups()) != 2:
+        raise Exception('AndroidManifest expected version number of format _.__')
+    version = result.groups()
+    major = int(version[0])
+    minor = int(version[1])
+    current_version = 'android:versionName="{}.{}"'.format(major, minor)
+    version_with_hotfix_entry = '{}.0"'.format(current_version)
+    return file_contents.replace(current_version, version_with_hotfix_entry)
+
+# String String -> None
 def create_tag_from_branch(branch_name, tag_name):
     for repo in repos:
         chdir_repo(repo)
-        subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
-        subprocess.call('git pull', shell=True)
+        subprocess.call('git checkout {}'.format(branch_name), shell=True)
+        subprocess.call('git pull origin {}'.format(branch_name), shell=True)
         subprocess.call('git tag {}'.format(tag_name), shell=True)
-        # subprocess.call('git push origin {}'.format(tag_name), shell=True)
+        subprocess.call('git push origin {}'.format(tag_name), shell=True)
+        chdir_base()
+
+# String -> None
+def close_branches(branch):
+    if not branch_exists_in_repos(branch_name):
+        raise Exception("commcare_{} branch doesn't exists".format(version))
+    print('removing local instances of the {} branch'.format(branch_name))
+    print("You will also want to close the remote github branches")
+    print("This will be automated once the script has been working for a while.")
+
+    for repo in repos:
+        chdir_repo(repo)
+        subprocess.call('git branch -d {}'.format(branch_name), shell=True)
         chdir_base()
 
 def schedule_hotfix_release(branch_base, version):

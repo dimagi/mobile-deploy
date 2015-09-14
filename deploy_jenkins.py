@@ -181,7 +181,7 @@ def inc_minor_version(job_name):
 # String -> None
 def inc_hotfix_version(version):
     """
-    Bump the VERSION build parameter of a release job by a hotfix version.
+    Bump the commcare-mobile VERSION build parameter of a release job by a hotfix version.
     """
     job_name = "commcare-mobile-{}".format(version.short_string())
     xml = j.get_job_config(job_name)
@@ -208,7 +208,7 @@ def make_release_jobs_use_tags(branch, tag):
     for job_root in job_roots:
         make_release_job_use_tag(job_root, branch, tag)
 
-# String Version String -> None
+# String String String -> None
 def make_release_job_use_tag(base_job_name, branch, tag):
     job_name = '{}-{}'.format(base_job_name, last_release)
 
@@ -219,6 +219,11 @@ def make_release_job_use_tag(base_job_name, branch, tag):
             "refs/tags/{}".format(tag))
 
     j.reconfig_job(job_name, xml)
+
+# Version String -> None
+def build_release(version):
+    j.build_job("javarosa-core-library-{}".format(version.short_string()))
+    print("Builds have been triggered. When they finish (~10 minutes) name them {} and mark 'keep this build forever'".format(version))
 
 # None -> Version
 def get_staged_release_version():
