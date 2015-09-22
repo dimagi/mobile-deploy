@@ -203,14 +203,14 @@ def inc_hotfix_version(version):
 def update_job_with_hotfix(current_version):
     return
 
-# String String -> None
-def make_release_jobs_use_tags(branch, tag):
+# String String Version -> None
+def make_release_jobs_use_tags(branch, tag, version):
     for job_root in job_roots:
-        make_release_job_use_tag(job_root, branch, tag)
+        make_release_job_use_tag(job_root, branch, tag, version)
 
-# String String String -> None
-def make_release_job_use_tag(base_job_name, branch, tag):
-    job_name = '{}-{}'.format(base_job_name, last_release)
+# String String String Version -> None
+def make_release_job_use_tag(base_job_name, branch, tag, version):
+    job_name = '{}-{}'.format(base_job_name, version.short_string())
 
     print("update {} to build off tag {}".format(job_name, tag))
 
@@ -223,7 +223,7 @@ def make_release_job_use_tag(base_job_name, branch, tag):
 # Version String -> None
 def build_release(version):
     j.build_job("javarosa-core-library-{}".format(version.short_string()))
-    print("Builds have been triggered. When they finish (~10 minutes) name them {} and mark 'keep this build forever'".format(version))
+    print("Release builds have been triggered. When they finish (~10 minutes) name them {} and mark 'keep this build forever'".format(version))
 
 # None -> Version
 def get_staged_release_version():

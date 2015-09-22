@@ -28,7 +28,7 @@ def deploy_release():
 
     tag = deploy_git.create_release_tags(BRANCH_BASE, version)
     branch = '{}{}'.format(BRANCH_BASE, version.short_string())
-    deploy_jenkins.make_release_jobs_use_tags(version, branch, tag)
+    deploy_jenkins.make_release_jobs_use_tags(branch, tag, version)
     deploy_jenkins.build_release(version)
     print("Run 'deploy finalize' builds are locked in")
 
