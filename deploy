@@ -40,7 +40,7 @@ def deploy_finalize():
     hotfix. Also removes local release branches.
     """
     version = deploy_jenkins.get_staged_release_version()
-
+    update_translations(version.short_string())
     deploy_jenkins.inc_hotfix_version(version)
     branch = '{}{}'.format(BRANCH_BASE, version.short_string())
     deploy_git.close_branches(branch)
@@ -66,7 +66,6 @@ def deploy_hotfix():
     off them
     """
     version = deploy_jenkins.get_staged_release_version()
-    update_translations(version.short_string())
     tag = deploy_git.schedule_hotfix_release(BRANCH_BASE, version)
     deploy_jenkins.inc_hotfix_version(version)
 
