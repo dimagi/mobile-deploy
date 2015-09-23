@@ -35,6 +35,8 @@ ccodk_strings_header_string = '# *** strings.xml ***'
 
 header_strings = [javarosa_header_string, commcare_header_string, ccodk_messages_header_string, ccodk_strings_header_string]
 
+strings_namespace = '{http://strings_namespace}'
+
 
 def update_translations(new_version_number):
     new_javarosa_text = get_updated_translations(javarosa_repo, javarosa_subfolder, javarosa_filename)
@@ -91,12 +93,14 @@ def get_updated_strings_block():
     resources = tree.getroot()
     string_list = []
     for string in resources.findall('string'):
-        name = string.get('name')
-        value = string.text
-        if name is not None and value is not None and name != 'aboutdialog':
-            string_list.append(name + '=' + value + '\n')
+        translatable_value = string.get('{}translatable'.format(strings_namespace))
+        if translatable_value == 'true':
+            name = string.get('name')
+            value = string.text
+            if name is not None and value is not None:
+                name_with_prefix = 'odk_{}'.format(name)
+                string_list.append(name_with_prefix + '=' + value + '\n')
     return "".join(string_list)
-
 
 
 def chdir_repo(repo):
