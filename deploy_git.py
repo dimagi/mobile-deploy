@@ -333,7 +333,7 @@ def create_tag_from_branch(branch_name, tag_name):
 # String -> None
 def close_branches(branch_name):
     if not branch_exists_in_repos(branch_name):
-        raise Exception("commcare_{} branch doesn't exists".format(version))
+        raise Exception("{} branch doesn't exists".format(branch_name))
     print('removing local instances of the {} branch'.format(branch_name))
     print("You will also want to close the remote github branches")
     print("\t(this will be automated once the script has been working for a while.)")
