@@ -232,6 +232,8 @@ def update_resource_string_version():
 # String -> None
 def mark_version_as_alpha(branch_name):
     chdir_repo('commcare')
+
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     replace_func(set_dev_tag_to_alpha, 'application/build.properties')
 
@@ -256,7 +258,7 @@ def create_release_tags(branch_base, version):
         raise Exception("one of the branches has unstaged changes, please stash and try again")
 
     branch_name = "{}{}".format(branch_base, version.short_string())
-    tag_name = "{}{}".format(branch_name, version)
+    tag_name = "{}{}".format(branch_base, version)
 
     if not branch_exists_in_repos(branch_name):
         raise Exception("{} branch doesn't exist".format(branch_name))
@@ -270,7 +272,9 @@ def create_release_tags(branch_base, version):
 # String -> None
 def mark_version_as_release(branch_name):
     chdir_repo('commcare')
+    print("marking commcare {} branch for release".format(branch_name))
 
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
 
     replace_func(set_dev_tag_to_release, 'application/build.properties')
@@ -292,9 +296,12 @@ def set_dev_tag_to_release(file_contents):
 def add_hotfix_version_to_odk(branch_name, hotfix_count):
     chdir_repo('commcare-odk')
 
+    print("adding hotfix version to {} branch of commcare-odk".format(branch_name))
+
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
 
-    replace_func(set_hotfix_version_to_zero, 'apps/AndroidManifest.xml')
+    replace_func(set_hotfix_version_to_zero, 'app/AndroidManifest.xml')
     review_and_commit_changes(branch_name, 'Automated commit adding hotfix version to AndroidManifest.xml')
 
     chdir_base()
@@ -308,12 +315,13 @@ def set_hotfix_version_to_zero(file_contents):
     version = result.groups()
     major = int(version[0])
     minor = int(version[1])
-    current_version = 'android:versionName="{}.{}"'.format(major, minor)
-    version_with_hotfix_entry = '{}.0"'.format(current_version)
+    current_version = 'android:versionName="{}.{}'.format(major, minor)
+    version_with_hotfix_entry = '{}.0'.format(current_version)
     return file_contents.replace(current_version, version_with_hotfix_entry)
 
 # String String -> None
 def create_tag_from_branch(branch_name, tag_name):
+    print("creating release tags '{}' from branches called '{}'".format(tag_name, branch_name))
     for repo in repos:
         chdir_repo(repo)
         subprocess.call('git checkout {}'.format(branch_name), shell=True)
@@ -323,15 +331,17 @@ def create_tag_from_branch(branch_name, tag_name):
         chdir_base()
 
 # String -> None
-def close_branches(branch):
+def close_branches(branch_name):
     if not branch_exists_in_repos(branch_name):
         raise Exception("commcare_{} branch doesn't exists".format(version))
     print('removing local instances of the {} branch'.format(branch_name))
     print("You will also want to close the remote github branches")
-    print("This will be automated once the script has been working for a while.")
+    print("\t(this will be automated once the script has been working for a while.)")
 
     for repo in repos:
         chdir_repo(repo)
+        print("removing {} branch of {} repo".format(branch_name, repo))
+        subprocess.call('git checkout master', shell=True)
         subprocess.call('git branch -d {}'.format(branch_name), shell=True)
         chdir_base()
 
