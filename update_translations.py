@@ -45,13 +45,13 @@ def update_translations(new_version_number):
     new_strings_text = get_updated_strings_block()
     new_text_blocks = [new_javarosa_text, new_commcare_text, new_ccodk_text, new_strings_text]
 
-    new_branch_name = checkout_new_branch(new_version_number)
+    new_branch_name = checkout_new_translations_branch(new_version_number)
     backup_old_translations_file()
     create_updated_translations_file(new_text_blocks)
     commit_and_push_new_branch(new_version_number, new_branch_name)
 
 
-def checkout_new_branch(new_version_number):
+def checkout_new_translations_branch(new_version_number):
     chdir_repo(translations_repo)
     subprocess.call('git checkout master', shell=True)
     subprocess.call('git pull origin master', shell=True)
@@ -81,6 +81,7 @@ def commit_and_push_new_branch(new_version_number, new_branch_name):
 
 def get_updated_translations(repo, relative_path, filename):
     chdir_repo(repo)
+    subprocess.call('git checkout master', shell=True)
     os.chdir(relative_path)
     f = open(filename, 'r')
     return f.read().strip()
@@ -88,6 +89,7 @@ def get_updated_translations(repo, relative_path, filename):
 
 def get_updated_strings_block():
     chdir_repo(commcare_odk_repo)
+    subprocess.call('git checkout master', shell=True)
     os.chdir(ccodk_strings_subfolder)
     tree = ET.parse(ccodk_strings_filename)
     resources = tree.getroot()
@@ -109,6 +111,3 @@ def chdir_repo(repo):
 
 def chdir_base():
     os.chdir(conf.BASE_DIR)
-
-
-update_translations('2.23')
