@@ -69,7 +69,10 @@ def create_updated_translations_file(new_text_blocks):
     f = open(hq_translations_filename, 'w')
     for i in range(4):
         f.write(header_strings[i] + '\n\n')
-        f.write(new_text_blocks[i] + '\n\n')
+        if i < 3:
+            f.write(new_text_blocks[i] + '\n\n')
+        else:
+            f.write(new_text_blocks[i])
 
 
 def commit_and_push_new_branch(new_version_number, new_branch_name):
