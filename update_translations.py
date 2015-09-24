@@ -29,14 +29,18 @@ ccodk_messages_filename = 'messages_ccodk_default.txt'
 ccodk_strings_filename = 'strings.xml'
 
 all_filenames = [javarosa_filename, commcare_filename, ccodk_messages_filename, ccodk_strings_filename]
+all_repos = [javarosa_repo, commcare_repo, commcare_odk_repo, translations_repo]
 
 header_prefix = '# *** '
 header_suffix = ' ***'
 
 strings_namespace = '{http://strings_namespace}'
+github_url = 'https://github.com/dimagi/commcare-translations/compare/'
 
 
 def update_translations(new_version_number):
+    if unstaged_changes_present():
+        raise Exception("One of your repositories has un-staged changes, please stash them and try again")
     new_javarosa_text = get_updated_translations(javarosa_repo, javarosa_subfolder, javarosa_filename)
     new_commcare_text = get_updated_translations(commcare_repo, commcare_subfolder, commcare_filename)
     new_ccodk_text = get_updated_translations(commcare_odk_repo, ccodk_messages_subfolder, ccodk_messages_filename)
@@ -47,6 +51,15 @@ def update_translations(new_version_number):
     backup_old_translations_file()
     create_updated_translations_file(new_text_blocks)
     commit_and_push_new_branch(new_version_number, new_branch_name)
+
+
+def unstaged_changes_present():
+    for repo in all_repos:
+        chdir_repo(repo)
+        if b'' != subprocess.check_output("git status -s | sed '/^??/d'", shell=True):
+            # If the results of git status are non-empty
+            return True
+    return False
 
 
 def checkout_new_translations_branch(new_version_number):
@@ -62,6 +75,8 @@ def backup_old_translations_file():
     os.rename(hq_translations_filename, hq_translations_filename + '.bak')
 
 
+# Write all of the updated text blocks from the 4 mobile translations files to the master hq translations file, with
+# headers for each section
 def create_updated_translations_file(new_text_blocks):
     with open(hq_translations_filename, 'w') as f:
         os.utime(hq_translations_filename, None)
@@ -75,11 +90,15 @@ def create_updated_translations_file(new_text_blocks):
 
 def commit_and_push_new_branch(new_version_number, new_branch_name):
     subprocess.call('git add {}'.format(hq_translations_filename), shell=True)
-    subprocess.call("git commit -m '{}'".format('Auto-commit: Update translations file for CommCare release ' + new_version_number),
+    commit_message = 'Auto-commit: Update translations file for CommCare release ' + new_version_number
+    subprocess.call("git commit -m '{}'".format(commit_message),
                     shell=True)
     subprocess.call('git push origin {}'.format(new_branch_name), shell=True)
+    print('An updated translations file has been pushed to GitHub as branch {0}. To create a PR out of this '
+          'branch, you can go directly to {1}'.format(new_branch_name, github_url + new_branch_name))
 
 
+# Return a string containing the updated text that should go into the master hq translations file from the given file
 def get_updated_translations(repo, relative_path, filename):
     chdir_repo(repo)
     subprocess.call('git checkout master', shell=True)
@@ -88,6 +107,9 @@ def get_updated_translations(repo, relative_path, filename):
         return f.read().strip()
 
 
+# Return a string containing the updated text that should go into the master hq translations file from the strings.xml
+# file in the mobile codebase. Because it is an xml file instead of a plain text file, the extraction needs to be done
+# in a different way from all of the other files
 def get_updated_strings_block():
     chdir_repo(commcare_odk_repo)
     subprocess.call('git checkout master', shell=True)
