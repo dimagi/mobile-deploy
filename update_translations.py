@@ -31,9 +31,6 @@ ccodk_strings_filename = 'strings.xml'
 all_filenames = [javarosa_filename, commcare_filename, ccodk_messages_filename, ccodk_strings_filename]
 all_repos = [javarosa_repo, commcare_repo, commcare_odk_repo, translations_repo]
 
-header_prefix = '# *** '
-header_suffix = ' ***'
-
 strings_namespace = '{http://strings_namespace}'
 github_url = 'https://github.com/dimagi/commcare-translations/compare/'
 
@@ -78,6 +75,8 @@ def backup_old_translations_file():
 # Write all of the updated text blocks from the 4 mobile translations files to the master hq translations file, with
 # headers for each section
 def create_updated_translations_file(new_text_blocks):
+    header_prefix = '# *** '
+    header_suffix = ' ***'
     with open(hq_translations_filename, 'w') as f:
         os.utime(hq_translations_filename, None)
         num_blocks = len(all_filenames)
