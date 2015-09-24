@@ -28,12 +28,10 @@ commcare_filename = 'messages_cc_default.txt'
 ccodk_messages_filename = 'messages_ccodk_default.txt'
 ccodk_strings_filename = 'strings.xml'
 
-javarosa_header_string = '# *** messages_default.txt ***'
-commcare_header_string = '# *** messages_cc_default.txt ***'
-ccodk_messages_header_string = '# *** messages_ccodk_default.txt ***'
-ccodk_strings_header_string = '# *** strings.xml ***'
+all_filenames = [javarosa_filename, commcare_filename, ccodk_messages_filename, ccodk_strings_filename]
 
-header_strings = [javarosa_header_string, commcare_header_string, ccodk_messages_header_string, ccodk_strings_header_string]
+header_prefix = '# *** '
+header_suffix = ' ***'
 
 strings_namespace = '{http://strings_namespace}'
 
@@ -61,18 +59,18 @@ def checkout_new_translations_branch(new_version_number):
 
 
 def backup_old_translations_file():
-    subprocess.call('mv {0} {1}'.format(hq_translations_filename, hq_translations_filename + '.bak'), shell=True)
+    os.rename(hq_translations_filename, hq_translations_filename + '.bak')
 
 
 def create_updated_translations_file(new_text_blocks):
-    subprocess.call('touch {}'.format(hq_translations_filename), shell=True)
-    f = open(hq_translations_filename, 'w')
-    for i in range(4):
-        f.write(header_strings[i] + '\n\n')
-        if i < 3:
-            f.write(new_text_blocks[i] + '\n\n')
-        else:
+    with open(hq_translations_filename, 'w') as f:
+        os.utime(hq_translations_filename, None)
+        num_blocks = len(all_filenames)
+        for i in range(num_blocks):
+            f.write(header_prefix + all_filenames[i] + header_suffix + '\n\n')
             f.write(new_text_blocks[i])
+            if i < num_blocks-1:
+                f.write('\n\n')
 
 
 def commit_and_push_new_branch(new_version_number, new_branch_name):
@@ -86,8 +84,8 @@ def get_updated_translations(repo, relative_path, filename):
     chdir_repo(repo)
     subprocess.call('git checkout master', shell=True)
     os.chdir(relative_path)
-    f = open(filename, 'r')
-    return f.read().strip()
+    with open(filename, 'r') as f:
+        return f.read().strip()
 
 
 def get_updated_strings_block():
@@ -110,7 +108,3 @@ def get_updated_strings_block():
 
 def chdir_repo(repo):
     os.chdir(os.path.join(conf.BASE_DIR, repo))
-
-
-def chdir_base():
-    os.chdir(conf.BASE_DIR)
