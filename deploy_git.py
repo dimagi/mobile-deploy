@@ -1,69 +1,36 @@
 #!/bin/python
 import subprocess, os, re, sys
+import utils as util
 
 from version import Version
 from user_interaction import prompt_until_answer
-import deploy_config as conf
+
 
 repos = ['javarosa', 'commcare', 'commcare-odk']
 
 # String String -> None
 def create_branches_and_update_versions(branch_base, version):
-    if unstaged_changes_present():
+    if util.unstaged_changes_present(repos):
         raise Exception("one of the branches has unstaged changes, please stash and try again")
-    pull_masters()
+    util.pull_masters()
 
     branch_name = "{}{}".format(branch_base, version)
-    if branch_exists_in_repos(branch_name):
+    if util.branch_exists_in_repos(branch_name, repos):
         raise Exception("commcare_{} branch already exists".format(version))
 
     create_release_branches(branch_name)
     update_version_numbers()
     mark_version_as_alpha(branch_name)
 
-# None -> Boolean
-def unstaged_changes_present():
-    for repo in repos:
-        chdir_repo(repo)
-        if b'' != subprocess.check_output("git status -s | sed '/^??/d'", shell=True):
-            return True
-        chdir_base()
-    return False
-
-# None -> None
-def pull_masters():
-    for repo in repos:
-        chdir_repo(repo)
-        subprocess.call('git pull origin master', shell=True)
-        chdir_base()
-
-# String -> Boolean
-def branch_exists_in_repos(branch_name):
-    for x in [branch_exists(repo, branch_name) for repo in repos]:
-        if x:
-            return True
-    return False
-
-# String String -> Boolean
-def branch_exists(child_directory, branch_name):
-    chdir_repo(child_directory)
-    try:
-        result = subprocess.check_output('git show-ref {}'.format(branch_name), shell=True)
-        return str(result).find('remotes/origin/{}'.format(branch_name)) != -1
-    except subprocess.CalledProcessError:
-        return False
-    finally:
-        chdir_base()
-
 # String -> None
 def create_release_branches(branch_name):
     for repo in repos:
-        chdir_repo(repo)
+        util.chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
         subprocess.call('git push origin {}'.format(branch_name), shell=True)
         subprocess.call('git checkout master', shell=True)
-        chdir_base()
+        util.chdir_base()
 
 # None -> None
 def update_version_numbers():
@@ -76,7 +43,7 @@ def update_commcare_version_numbers():
     Update version numbers in build.properties and CommCareConfigEngin on
     master.
     """
-    chdir_repo('commcare')
+    util.chdir_repo('commcare')
     subprocess.call('git checkout master', shell=True)
 
     replace_func(replace_build_prop,
@@ -86,12 +53,12 @@ def update_commcare_version_numbers():
 
     review_and_commit_changes('master',
             'Automated version bump')
-    chdir_base()
+    util.chdir_base()
 
 # String String -> None
 def review_and_commit_changes(branch, commit_msg):
     diff = subprocess.check_output("git diff", shell=True)
-    print_with_newlines(str(diff))
+    util.print_with_newlines(str(diff))
 
     if prompt_until_answer('Proceed by pushing diff to {}?'.format(branch), True):
         subprocess.call('git add -u', shell=True)
@@ -101,11 +68,6 @@ def review_and_commit_changes(branch, commit_msg):
     else:
         print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
         sys.exit(0)
-
-# String -> None
-def print_with_newlines(msg):
-    for line in msg.split('\\n'):
-        print(line)
 
 # (String -> String) String -> None
 def replace_func(func, file_name):
@@ -162,7 +124,7 @@ def update_odk_version_numbers():
     """
     Update version numbers in AndroidManifest and push master.
     """
-    chdir_repo('commcare-odk')
+    util.chdir_repo('commcare-odk')
     subprocess.call('git checkout master', shell=True)
 
     replace_func(update_manifest_version, 'app/AndroidManifest.xml')
@@ -170,7 +132,7 @@ def update_odk_version_numbers():
 
     review_and_commit_changes('master', 'Automated version bump')
 
-    chdir_base()
+    util.chdir_base()
 
 # String -> String
 def update_manifest_version(file_contents):
@@ -231,7 +193,7 @@ def update_resource_string_version():
 
 # String -> None
 def mark_version_as_alpha(branch_name):
-    chdir_repo('commcare')
+    util.chdir_repo('commcare')
 
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
@@ -240,7 +202,7 @@ def mark_version_as_alpha(branch_name):
     review_and_commit_changes(branch_name, 
             'Automated commit adding dev tag to commcare version')
     subprocess.call('git checkout master', shell=True)
-    chdir_base()
+    util.chdir_base()
 
 # String -> String
 def set_dev_tag_to_alpha(file_contents):
@@ -254,13 +216,13 @@ def set_dev_tag_to_alpha(file_contents):
 
 # String Version -> String
 def create_release_tags(branch_base, version):
-    if unstaged_changes_present():
+    if util.unstaged_changes_present(repos):
         raise Exception("one of the branches has unstaged changes, please stash and try again")
 
     branch_name = "{}{}".format(branch_base, version.short_string())
     tag_name = "{}{}".format(branch_base, version)
 
-    if not branch_exists_in_repos(branch_name):
+    if not util.branch_exists_in_repos(branch_name, repos):
         raise Exception("{} branch doesn't exist".format(branch_name))
 
     mark_version_as_release(branch_name)
@@ -271,7 +233,7 @@ def create_release_tags(branch_base, version):
 
 # String -> None
 def mark_version_as_release(branch_name):
-    chdir_repo('commcare')
+    util.chdir_repo('commcare')
     print("marking commcare {} branch for release".format(branch_name))
 
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
@@ -280,7 +242,7 @@ def mark_version_as_release(branch_name):
     replace_func(set_dev_tag_to_release, 'application/build.properties')
     review_and_commit_changes(branch_name, 'Automated commit removing alpha tag from commcare version')
 
-    chdir_base()
+    util.chdir_base()
 
 # String -> String
 def set_dev_tag_to_release(file_contents):
@@ -294,7 +256,7 @@ def set_dev_tag_to_release(file_contents):
 
 # String Integer -> None
 def add_hotfix_version_to_odk(branch_name, hotfix_count):
-    chdir_repo('commcare-odk')
+    util.chdir_repo('commcare-odk')
 
     print("adding hotfix version to {} branch of commcare-odk".format(branch_name))
 
@@ -304,7 +266,7 @@ def add_hotfix_version_to_odk(branch_name, hotfix_count):
     replace_func(set_hotfix_version_to_zero, 'app/AndroidManifest.xml')
     review_and_commit_changes(branch_name, 'Automated commit adding hotfix version to AndroidManifest.xml')
 
-    chdir_base()
+    util.chdir_base()
 
 # String -> String
 def set_hotfix_version_to_zero(file_contents):
@@ -323,12 +285,12 @@ def set_hotfix_version_to_zero(file_contents):
 def create_tag_from_branch(branch_name, tag_name):
     print("creating release tags '{}' from branches called '{}'".format(tag_name, branch_name))
     for repo in repos:
-        chdir_repo(repo)
+        util.chdir_repo(repo)
         subprocess.call('git checkout {}'.format(branch_name), shell=True)
         subprocess.call('git pull origin {}'.format(branch_name), shell=True)
         subprocess.call('git tag {}'.format(tag_name), shell=True)
         subprocess.call('git push origin {}'.format(tag_name), shell=True)
-        chdir_base()
+        util.chdir_base()
 
 # String -> None
 def close_branches(branch_name):
@@ -339,22 +301,13 @@ def close_branches(branch_name):
     print("\t(this will be automated once the script has been working for a while.)")
 
     for repo in repos:
-        chdir_repo(repo)
+        util.chdir_repo(repo)
         print("removing {} branch of {} repo".format(branch_name, repo))
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git branch -d {}'.format(branch_name), shell=True)
-        chdir_base()
+        util.chdir_base()
 
 def schedule_hotfix_release(branch_base, version):
     branch_name = "{}{}".format(branch_base, version.short_string())
     tag_name = "{}{}".format(branch_name, version)
     create_tag_from_branch(branch_name, tag_name)
-
-
-# String -> None
-def chdir_repo(repo):
-    os.chdir(os.path.join(conf.BASE_DIR, repo))
-
-# None -> None
-def chdir_base():
-    os.chdir(conf.BASE_DIR)

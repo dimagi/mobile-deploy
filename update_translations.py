@@ -1,7 +1,7 @@
 import subprocess
 import os
-import deploy_config as conf
 import xml.etree.ElementTree as ET
+import utils as util
 
 # name of the master hq translations file to be updated
 hq_translations_filename = 'messages_en-2.txt'
@@ -36,7 +36,7 @@ github_url = 'https://github.com/dimagi/commcare-translations/compare/'
 
 
 def update_translations(new_version_number):
-    if unstaged_changes_present():
+    if util.unstaged_changes_present(all_repos):
         raise Exception("One of your repositories has un-staged changes, please stash them and try again")
     new_javarosa_text = get_updated_translations(javarosa_repo, javarosa_subfolder, javarosa_filename)
     new_commcare_text = get_updated_translations(commcare_repo, commcare_subfolder, commcare_filename)
@@ -50,17 +50,8 @@ def update_translations(new_version_number):
     commit_and_push_new_branch(new_version_number, new_branch_name)
 
 
-def unstaged_changes_present():
-    for repo in all_repos:
-        chdir_repo(repo)
-        if b'' != subprocess.check_output("git status -s | sed '/^??/d'", shell=True):
-            # If the results of git status are non-empty
-            return True
-    return False
-
-
 def checkout_new_translations_branch(new_version_number):
-    chdir_repo(translations_repo)
+    util.chdir_repo(translations_repo)
     subprocess.call('git checkout master', shell=True)
     subprocess.call('git pull origin master', shell=True)
     new_branch_name = '{}_release_additions'.format(new_version_number)
@@ -99,7 +90,7 @@ def commit_and_push_new_branch(new_version_number, new_branch_name):
 
 # Return a string containing the updated text that should go into the master hq translations file from the given file
 def get_updated_translations(repo, relative_path, filename):
-    chdir_repo(repo)
+    util.chdir_repo(repo)
     subprocess.call('git checkout master', shell=True)
     os.chdir(relative_path)
     with open(filename, 'r') as f:
@@ -110,7 +101,7 @@ def get_updated_translations(repo, relative_path, filename):
 # file in the mobile codebase. Because it is an xml file instead of a plain text file, the extraction needs to be done
 # in a different way from all of the other files
 def get_updated_strings_block():
-    chdir_repo(commcare_odk_repo)
+    util.chdir_repo(commcare_odk_repo)
     subprocess.call('git checkout master', shell=True)
     os.chdir(ccodk_strings_subfolder)
     tree = ET.parse(ccodk_strings_filename)
@@ -125,7 +116,3 @@ def get_updated_strings_block():
                 name_with_prefix = 'odk_{}'.format(name)
                 string_list.append(name_with_prefix + '=' + value + '\n')
     return "".join(string_list)
-
-
-def chdir_repo(repo):
-    os.chdir(os.path.join(conf.BASE_DIR, repo))
