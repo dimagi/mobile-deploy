@@ -121,7 +121,7 @@ def get_updated_strings_block():
 
 
 def replace_string_format_syntax(value):
-    return re.sub(r'%([\d]+\$)?s', replace_helper, value)
+    return re.sub(r'%(\d+\$)?s', replace_helper, value)
 
 
 def replace_helper(match_obj):
