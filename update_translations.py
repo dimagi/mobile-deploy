@@ -2,6 +2,7 @@ import subprocess
 import os
 import xml.etree.ElementTree as ET
 import utils as util
+import re
 
 # name of the master hq translations file to be updated
 hq_translations_filename = 'messages_en-2.txt'
@@ -114,5 +115,29 @@ def get_updated_strings_block():
             value = string.text
             if name is not None and value is not None:
                 name_with_prefix = 'odk_{}'.format(name)
+                value = unescape_quotes(replace_string_format_syntax(value))
                 string_list.append(name_with_prefix + '=' + value + '\n')
     return "".join(string_list)
+
+
+def replace_string_format_syntax(value):
+    return re.sub(r'%([\d]+\$)?s', replace_helper, value)
+
+
+def replace_helper(match_obj):
+    text = match_obj.group()
+    if len(text) == 2:
+        # This was just '%s', so want to use 0 as the index
+        new_index = 0
+    else:
+        # Otherwise, there is some number sitting in between '%' and '$s'
+        index = text[1:-2]
+        # Decrement this by 1 because HQ's indexing starts at 0 and ours starts at 1
+        new_index = int(index) - 1
+    return '${' + str(new_index) + '}'
+
+
+def unescape_quotes(text):
+    text = re.sub(r'\\"', '"', text)
+    text = re.sub(r"\\'", "'", text)
+    return text
