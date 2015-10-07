@@ -1,21 +1,24 @@
 #!/bin/python
-import subprocess, os, re, sys
+
+import subprocess
+import os
+import re
+import sys
 import utils as util
 
 from version import Version
 from user_interaction import prompt_until_answer
-
-
-repos = ['javarosa', 'commcare', 'commcare-odk']
+from deploy_config import REPOS
 
 # String String -> None
 def create_branches_and_update_versions(branch_base, version):
-    if util.unstaged_changes_present(repos):
-        raise Exception("one of the branches has unstaged changes, please stash and try again")
+    if util.unstaged_changes_present(REPOS):
+        raise Exception("one of the branches has unstaged changes, " +
+                        "please stash and try again")
     util.pull_masters()
 
     branch_name = "{}{}".format(branch_base, version)
-    if util.branch_exists_in_repos(branch_name, repos):
+    if util.branch_exists_in_repos(branch_name, REPOS):
         raise Exception("commcare_{} branch already exists".format(version))
 
     create_release_branches(branch_name)
@@ -24,7 +27,7 @@ def create_branches_and_update_versions(branch_base, version):
 
 # String -> None
 def create_release_branches(branch_name):
-    for repo in repos:
+    for repo in REPOS:
         util.chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
@@ -47,12 +50,12 @@ def update_commcare_version_numbers():
     subprocess.call('git checkout master', shell=True)
 
     replace_func(replace_build_prop,
-            'application/build.properties')
+                 'application/build.properties')
     replace_func(replace_config_engine_version,
-            'util/src/org/commcare/util/CommCareConfigEngine.java')
+                 'util/src/org/commcare/util/CommCareConfigEngine.java')
 
     review_and_commit_changes('master',
-            'Automated version bump')
+                              'Automated version bump')
     util.chdir_base()
 
 # String String -> None
@@ -60,13 +63,15 @@ def review_and_commit_changes(branch, commit_msg):
     diff = subprocess.check_output("git diff", shell=True)
     util.print_with_newlines(str(diff))
 
-    if prompt_until_answer('Proceed by pushing diff to {}?'.format(branch), True):
+    question = 'Proceed by pushing diff to {}?'.format(branch)
+    if prompt_until_answer(question, True):
         subprocess.call('git add -u', shell=True)
         subprocess.call("git commit -m '{}'".format(commit_msg),
-                shell=True)
+                        shell=True)
         subprocess.call("git push origin {}".format(branch), shell=True)
     else:
-        print("Exiting during code level version updates due to incorrect diff. You'll need to manually complete the deploy.")
+        print("Exiting during code level version updates due to " +
+              "incorrect diff. You'll need to manually complete the deploy.")
         sys.exit(0)
 
 # (String -> String) String -> None
@@ -91,33 +96,34 @@ def replace_func(func, file_name):
 def replace_build_prop(file_contents):
     versionPattern = re.compile(r'app.version=(\d+).(\d+).(\d+)')
     result = versionPattern.search(file_contents)
-    if result == None or len(result.groups()) != 3:
+    if result is None or len(result.groups()) != 3:
         raise Exception("Couldn't parse version in build.properties")
 
-    version = result.groups()
-    next_version_raw = list(map(int, version))
-    next_version = Version(*next_version_raw)
+    version_raw = list(map(int, result.groups()))
+    version = Version(*version_raw)
 
-    print('commcare build.properties: replacing {} with {}'.format(next_version, next_version.get_next_minor_release()))
-    return file_contents.replace('app.version={}'.format(next_version),
-            'app.version={}'.format(next_version.get_next_minor_release()))
-
+    next_minor = version.get_next_minor_release()
+    print('commcare build.properties: replacing {} with {}'.format(version,
+                                                                   next_minor))
+    return file_contents.replace('app.version={}'.format(version),
+                                 'app.version={}'.format(next_minor))
 
 # String -> String
 def replace_config_engine_version(file_contents):
     versionPattern = re.compile(r'CommCarePlatform\((\d+), (\d+)\)')
     result = versionPattern.search(file_contents)
-    if result == None or len(result.groups()) != 2:
+    if result is None or len(result.groups()) != 2:
         raise Exception("Couldn't parse version in CommCareConfigEngine")
     version_raw = result.groups()
     major = int(version_raw[0])
     minor = int(version_raw[1])
 
-    print('CommCareConfigEngine: replacing {} with {}'.format(
-        'CommCarePlatform({}, {})'.format(major, minor),
-        'CommCarePlatform({}, {})'.format(major, minor + 1)))
+    platform_pattern = 'CommCarePlatform({}, {})'.format(major, minor)
+    new_platform = 'CommCarePlatform({}, {})'.format(major, minor + 1)
+    print('CommCareConfigEngine: replacing {} with {}'.format(platform_pattern,
+                                                              new_platform))
 
-    return file_contents.replace('CommCarePlatform({}, {})'.format(major, minor), 'CommCarePlatform({}, {})'.format(major, minor + 1))
+    return file_contents.replace(platform_pattern, new_platform)
 
 # None -> None
 def update_odk_version_numbers():
@@ -138,7 +144,7 @@ def update_odk_version_numbers():
 def update_manifest_version(file_contents):
     versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
     result = versionPattern.search(file_contents)
-    if result == None or len(result.groups()) != 2:
+    if result is None or len(result.groups()) != 2:
         raise
     version = result.groups()
     major = int(version[0])
@@ -147,10 +153,10 @@ def update_manifest_version(file_contents):
     next_version = 'android:versionName="{}.{}"'.format(major, minor + 1)
     return file_contents.replace(current_version, next_version)
 
-# String -> None
+# None -> None
 def update_resource_string_version():
     """ Update version in strings.xml. requires special logic because the
-    version numbers are on different lines: 
+    version numbers are on different lines:
     <integer-array name="commcare_version">
         <item>2</item>
         <item>22</item>
@@ -170,7 +176,7 @@ def update_resource_string_version():
             print(line)
             versionPattern = re.compile(r'<item>(\d+)<')
             result = versionPattern.search(file_contents)
-            if result == None:
+            if result is None:
                 raise Exception("couldn't parse version")
             version = int(versionPattern.search(file_contents).groups()[0])
             line = "<item>{}</item>\n".format(version + 1)
@@ -198,9 +204,8 @@ def mark_version_as_alpha(branch_name):
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     replace_func(set_dev_tag_to_alpha, 'application/build.properties')
-
-    review_and_commit_changes(branch_name, 
-            'Automated commit adding dev tag to commcare version')
+    commit_message = 'Automated commit adding dev tag to commcare version'
+    review_and_commit_changes(branch_name, commit_message)
     subprocess.call('git checkout master', shell=True)
     util.chdir_base()
 
@@ -216,18 +221,18 @@ def set_dev_tag_to_alpha(file_contents):
 
 # String Version -> String
 def create_release_tags(branch_base, version):
-    if util.unstaged_changes_present(repos):
-        raise Exception("one of the branches has unstaged changes, please stash and try again")
+    if util.unstaged_changes_present(REPOS):
+        raise Exception("A branch has unstaged changes, stash and try again")
 
     branch_name = "{}{}".format(branch_base, version.short_string())
     tag_name = "{}{}".format(branch_base, version)
 
-    if not util.branch_exists_in_repos(branch_name, repos):
+    if not util.branch_exists_in_repos(branch_name, REPOS):
         raise Exception("{} branch doesn't exist".format(branch_name))
 
     mark_version_as_release(branch_name)
     add_hotfix_version_to_odk(branch_name, 0)
-    create_tag_from_branch(branch_name, tag_name)
+    create_tags_for_repos(branch_name, tag_name)
 
     return tag_name
 
@@ -240,7 +245,8 @@ def mark_version_as_release(branch_name):
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
 
     replace_func(set_dev_tag_to_release, 'application/build.properties')
-    review_and_commit_changes(branch_name, 'Automated commit removing alpha tag from commcare version')
+    commit_message = 'Automated commit removing alpha tag from commcare version'
+    review_and_commit_changes(branch_name, commit_message)
 
     util.chdir_base()
 
@@ -258,13 +264,14 @@ def set_dev_tag_to_release(file_contents):
 def add_hotfix_version_to_odk(branch_name, hotfix_count):
     util.chdir_repo('commcare-odk')
 
-    print("adding hotfix version to {} branch of commcare-odk".format(branch_name))
+    print("adding hotfix version to commcare-odk branch {}".format(branch_name))
 
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
 
     replace_func(set_hotfix_version_to_zero, 'app/AndroidManifest.xml')
-    review_and_commit_changes(branch_name, 'Automated commit adding hotfix version to AndroidManifest.xml')
+    commit_message = 'Automated commit adding hotfix version to AndroidManifest'
+    review_and_commit_changes(branch_name, commit_message)
 
     util.chdir_base()
 
@@ -272,8 +279,8 @@ def add_hotfix_version_to_odk(branch_name, hotfix_count):
 def set_hotfix_version_to_zero(file_contents):
     versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
     result = versionPattern.search(file_contents)
-    if result == None or len(result.groups()) != 2:
-        raise Exception('AndroidManifest expected version number of format _.__')
+    if result is None or len(result.groups()) != 2:
+        raise Exception('Expected AndroidManifest version number format _.__')
     version = result.groups()
     major = int(version[0])
     minor = int(version[1])
@@ -282,32 +289,42 @@ def set_hotfix_version_to_zero(file_contents):
     return file_contents.replace(current_version, version_with_hotfix_entry)
 
 # String String -> None
-def create_tag_from_branch(branch_name, tag_name):
-    print("creating release tags '{}' from branches called '{}'".format(tag_name, branch_name))
-    for repo in repos:
+def create_tags_for_repos(branch_name, tag_name):
+    print("creating release tags '{}' from '{}' branches".format(tag_name,
+                                                                 branch_name))
+    for repo in REPOS:
         util.chdir_repo(repo)
-        subprocess.call('git checkout {}'.format(branch_name), shell=True)
-        subprocess.call('git pull origin {}'.format(branch_name), shell=True)
-        subprocess.call('git tag {}'.format(tag_name), shell=True)
-        subprocess.call('git push origin {}'.format(tag_name), shell=True)
+        create_tag_from_branch(branch_name, tag_name)
         util.chdir_base()
+
+# String String -> None
+def create_tag_from_branch(branch_name, tag_name):
+    subprocess.call('git checkout {}'.format(branch_name), shell=True)
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
+    subprocess.call('git tag {}'.format(tag_name), shell=True)
+    subprocess.call('git push origin {}'.format(tag_name), shell=True)
 
 # String -> None
 def close_branches(branch_name):
-    if not branch_exists_in_repos(branch_name):
+    if not util.branch_exists_in_repos(branch_name):
         raise Exception("{} branch doesn't exists".format(branch_name))
-    print('removing local instances of the {} branch'.format(branch_name))
+    print("removing local instances of the {} branch".format(branch_name))
     print("You will also want to close the remote github branches")
-    print("\t(this will be automated once the script has been working for a while.)")
+    print("\tthis'll be automated once the script's been working for a while.")
 
-    for repo in repos:
+    for repo in REPOS:
         util.chdir_repo(repo)
         print("removing {} branch of {} repo".format(branch_name, repo))
         subprocess.call('git checkout master', shell=True)
         subprocess.call('git branch -d {}'.format(branch_name), shell=True)
         util.chdir_base()
 
-def schedule_hotfix_release(branch_base, version):
+# [List-of String] String Version -> None
+def schedule_hotfix_release(hotfix_repos, branch_base, version):
     branch_name = "{}{}".format(branch_base, version.short_string())
     tag_name = "{}{}".format(branch_name, version)
-    create_tag_from_branch(branch_name, tag_name)
+
+    for repo in hotfix_repos:
+        util.chdir_repo(repo)
+        create_tags_for_repos(branch_name, tag_name)
+        util.chdir_base()

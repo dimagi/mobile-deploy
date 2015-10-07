@@ -1,0 +1,61 @@
+#!/bin/python
+
+import sys
+
+import deploy_jenkins
+import deploy_git
+from deploy_config import REPOS, BRANCH_BASE
+
+HELP_MSG = """'create' creates the hotfix branches from the latest release tag.
+'release' creates release tags and updates jenkins job to use it.
+'help' prints this message."""
+
+def create_hotfix():
+    """
+    Re-open release branch from latest release branch and update release jobs
+    to build against those branches.
+    """
+    # TODO: check that hotfix version was bumped correctly during deploy_release
+    version = deploy_jenkins.get_staged_release_version()
+
+    old_tag = "{}{}".format(BRANCH_BASE, version.get_last_hotfix())
+    branch = "{}{}".format(BRANCH_BASE, version.short_string())
+
+    deploy_git.checkout_old_tag(old_tag)
+    deploy_jenkins.build_jobs_against_branch(branch)
+
+def deploy_hotfix():
+    """
+    Finalize hotfix by creating its tags and setting the release jobs to build
+    off them
+    """
+    version = deploy_jenkins.get_staged_release_version()
+    repos = get_hotfix_repos(version)
+    deploy_git.schedule_hotfix_release(repos, BRANCH_BASE, version)
+    deploy_jenkins.inc_hotfix_version(version)
+
+# Version -> [List-of String]
+def get_hotfix_repos(version):
+    for repo in REPOS:
+        print(repo)
+    return []
+
+def main():
+    if len(sys.argv) > 2:
+        filename = sys.argv[0]
+        arg_count = len(sys.argv) - 1
+        print("{} only accepts one argument, {} provided".format(filename,
+                                                                 arg_count))
+        sys.exit(0)
+
+    command = sys.argv[1]
+
+    if command == 'create':
+        create_hotfix()
+    elif command == 'release':
+        deploy_hotfix()
+    elif command == 'help':
+        print(HELP_MSG)
+
+if __name__ == "__main__":
+    main()

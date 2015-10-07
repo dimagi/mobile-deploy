@@ -2,11 +2,12 @@
 
 import sys
 
-import deploy_jenkins, deploy_git
+import deploy_jenkins
+import deploy_git
 
 from update_translations import update_translations
 
-BRANCH_BASE = "commcare_"
+from deploy_config import BRANCH_BASE
 
 HELP_MSG = """'create' creates the release branches and jobs.
 'release' creates release tags and updates jenkins job to use it.
@@ -46,32 +47,12 @@ def deploy_finalize():
     deploy_git.close_branches(branch)
 
 
-def create_hotfix():
-    """
-    Re-open release branch from latest release branch and update release jobs
-    to build against those branches.
-    """
-    # TODO: check that hotfix version was bumped correctly during deploy_release
-    version = deploy_jenkins.get_staged_release_version()
-
-    old_tag = "{}{}".format(BRANCH_BASE, version.get_last_hotfix())
-    branch = "{}{}".format(BRANCH_BASE, version.short_string())
-
-    deploy_git.checkout_old_tag(old_tag)
-    deploy_jenkins.build_jobs_against_branch(branch)
-
-def deploy_hotfix():
-    """
-    Finalize hotfix by creating its tags and setting the release jobs to build
-    off them
-    """
-    version = deploy_jenkins.get_staged_release_version()
-    tag = deploy_git.schedule_hotfix_release(BRANCH_BASE, version)
-    deploy_jenkins.inc_hotfix_version(version)
-
 def main():
     if len(sys.argv) > 2:
-        print("{} only accepts one argument, {} provided".format(sys.argv[0], len(sys.argv) - 1))
+        filename = sys.argv[0]
+        arg_count = len(sys.argv) - 1
+        print("{} only accepts one argument, {} provided".format(filename,
+                                                                 arg_count))
         sys.exit(0)
 
     command = sys.argv[1]
