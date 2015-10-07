@@ -17,15 +17,37 @@ HELP_MSG = """'create' creates the hotfix branches from the latest release tag.
 
 def create_hotfix():
     """
-    Re-open release branch from latest release branch and update release jobs
-    to build against those branches.
+    Checkout latest release tag for repos, ask user which repos need hotfixing,
+    create hotfix branches for those repos and set jenkins release jobs to build
+    off the newly created hotfix branches.
+
+    NOTE: Due to repo dependencies, every hotfix effects commcare-odk, but not
+    every hotfix effects other repos. Thus, the release tags may not match up
+    between repos. Whenever a new hotfix is created for a repo, its version is
+    bumped to the latest odk hotfix.
     """
-    ver = deploy_git.get_hotfix_version()
+    # TODO: check for unstaged changes
+    ver = deploy_git.get_next_hotfix_version_from_release_tags()
     verify_value_with_user("Creating {} hotfix. Is this correct?".format(ver),
                            "The script detected an incorrect hotfix version.")
 
+    hotfix_repos = get_hotfix_repos_from_user()
+
+    deploy_git.checkout_latest_hotfix_tags(ver)
+    deploy_git.create_hotfix_branches(ver, hotfix_repos)
+
+    deploy_jenkins.build_jobs_against_hotfix_branches(hotfix_repos)
+
+
+# None -> [List-of String]
+def get_hotfix_repos_from_user():
+    """
+    Ask the user which repositories need hotfixes applied to them.
+    """
+    # String -> Boolean
     def validate_user_repo_input(user_input):
-        return len(filter(user_input.split(), lambda s: s not in REPOS)) == 0
+        invalid_repos = filter(user_input.split(), lambda s: s not in REPOS)
+        return len(list(invalid_repos)) == 0
 
     hotfix_repo_msg = ("Which repos need to be hotfixed?\n" +
                        "enter space delimited list including: " +
@@ -33,41 +55,70 @@ def create_hotfix():
     hotfix_repos_raw = prompt_user_with_validation(hotfix_repo_msg,
                                                    True,
                                                    validate_user_repo_input)
-    hotfix_repos = hotfix_repos_raw.split()
-
-    deploy_git.checkout_latest_hotfix_tags(ver)
-    deploy_git.create_hotfix_branches(ver, hotfix_repos)
-
-    branch = "{}{}".format(BRANCH_BASE, ver.short_string())
-    deploy_jenkins.build_jobs_against_hotfix_branches(branch, hotfix_repos)
+    return hotfix_repos_raw.split()
 
 
 def deploy_hotfix():
     """
-    Finalize hotfix by creating its tags and setting the release jobs to build
-    off them
+    Create new release tags from open hotfix branches and make jenkins release
+    jobs build off of them.
     """
-    version = deploy_git.get_hotfix_version()
+    version = deploy_git.get_next_hotfix_version_from_release_tags()
     hotfix_repos = get_hotfix_repos(version)
-    deploy_git.create_hotfix_tags(hotfix_repos, BRANCH_BASE, version)
-    deploy_jenkins.inc_hotfix_version(version)
+
+    verify_msg = "Hotfixing repos {}; correct?".format(", ".join(hotfix_repos))
+    verify_value_with_user(verify_msg, True)
+
+    deploy_git.create_hotfix_tags(hotfix_repos, version)
+    deploy_jenkins.build_jobs_against_hotfix_branches(hotfix_repos)
+
+    if "commcare" in hotfix_repos:
+        deploy_jenkins.set_commcare_mobile_hotfix_version(version)
 
 
 # Version -> [List-of String]
 def get_hotfix_repos(version):
+    """
+    Find open hotfix branches.
+    """
     branch_name = "{}{}".format(BRANCH_BASE, version.short_string())
-    return filter(lambda repo: branch_exists(repo, branch_name), REPOS)
+    print(branch_name)
+    return list(filter(lambda repo: branch_exists(repo, branch_name), REPOS))
 
 
 # None -> None
 def finalize_hotfix():
-    version = deploy_git.get_hotfix_version()
+    """
+    Close any branches opened for hotfixing and bump the hotfix version on the
+    commcare-mobile jenkins release build.
+    """
+    version = deploy_git.get_current_hotfix_version_from_release_tags()
+
+    hotfix_repos = get_hotfix_repos(version)
+
+    deploy_git.close_hotfix_branches()
+
+    if "commcare" in hotfix_repos:
+        deploy_jenkins.inc_hotfix_version(version)
     return
+
 
 # None -> None
 def resume_hotfix():
-    version = deploy_git.get_hotfix_version()
-    return
+    """
+    Checkout the last release tags and open hotfix branches for all repositories
+    """
+    print("Checking out the hotfix branches and last release for other repos.")
+    print("(assumes the release tag hasn't been created for current hotfix)")
+    version = deploy_git.get_next_hotfix_version_from_release_tags()
+    hotfix_repos = get_hotfix_repos(version)
+
+    branch_name = "{}{}".format(BRANCH_BASE, version.short_string())
+    for repo in REPOS:
+        if repo in hotfix_repos:
+            deploy_git.checkout_ref(repo, branch_name)
+        else:
+            deploy_git.checkout_latest_hotfix_tag(version, repo)
 
 
 def main():

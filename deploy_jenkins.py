@@ -6,14 +6,18 @@ import os
 
 from version import Version
 from user_interaction import verify_value_with_user
+from deploy_git import get_last_hotfix_number_in_repo
 from deploy_config import JENKINS_USER, JENKINS_PASSWORD,\
-    BUILD_SERVER_USER, BUILD_SERVER
+    BUILD_SERVER_USER, BUILD_SERVER, BRANCH_BASE
 
 j = jenkins.Jenkins('http://jenkins.dimagi.com',
                     JENKINS_USER,
                     JENKINS_PASSWORD)
 
 job_roots = ['javarosa-core-library', 'commcare-mobile', 'commcare-odk']
+repo_to_jobs = {'javarosa': 'javarosa-core-library',
+                'commcare': 'commcare-mobile',
+                'commcare-odk': 'commcare-odk'}
 
 
 # None -> String
@@ -250,18 +254,30 @@ def update_job_with_hotfix(current_version):
 # String String Version -> None
 def make_release_jobs_use_tags(branch, tag, version):
     for job_root in job_roots:
-        make_release_job_use_tag(job_root, branch, tag, version)
+        make_release_job_use_tag(job_root, version, branch, tag)
+
+
+# String Version String String -> None
+def make_release_job_use_tag(base_job_name, version, branch, tag):
+    full_branch = "refs/heads/{}".format(branch)
+    full_tag = "refs/tags/{}".format(tag)
+    replace_job_git_reference(base_job_name, version, full_branch, full_tag)
 
 
 # String String String Version -> None
-def make_release_job_use_tag(base_job_name, branch, tag, version):
+def make_release_job_use_branch(base_job_name, version, tag, branch):
+    full_tag = "refs/tags/{}".format(tag)
+    full_branch = "refs/heads/{}".format(branch)
+    replace_job_git_reference(base_job_name, version, full_tag, full_branch)
+
+
+def replace_job_git_reference(base_job_name, version, current_ref, new_ref):
     job_name = '{}-{}'.format(base_job_name, version.short_string())
 
-    print("update {} to build off tag {}".format(job_name, tag))
+    print("update {} to build off {}".format(job_name, new_ref))
 
     xml = j.get_job_config(job_name)
-    xml = xml.replace("refs/heads/{}".format(branch),
-                      "refs/tags/{}".format(tag))
+    xml = xml.replace(current_ref, new_ref)
 
     j.reconfig_job(job_name, xml)
 
@@ -299,6 +315,14 @@ def get_staged_release_version():
 
 
 # String [List-of String] -> None
-def build_jobs_against_hotfix_branches(branch, hotfix_repos):
-    # TODO
-    return
+def build_jobs_against_hotfix_branches(hotfix_repos):
+    """
+    Make release jobs for hotfix repos build off of the newly opened hotfix
+    branches.
+    """
+    def get_branch_name(v): "{}{}".format(BRANCH_BASE, v.short_string())
+    version = get_staged_release_version()
+    for repo in hotfix_repos:
+        tag = get_last_hotfix_number_in_repo(repo, version)
+        make_release_job_use_branch(repo_to_jobs[repo], version,
+                                    tag, get_branch_name(version))

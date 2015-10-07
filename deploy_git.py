@@ -323,6 +323,9 @@ def set_hotfix_version_to_zero(file_contents):
 
 # String String -> None
 def create_tags_for_repos(branch_name, tag_name):
+    """
+    Creates the release tag from provided branch.
+    """
     print("creating release tags '{}' from '{}' branches".format(tag_name,
                                                                  branch_name))
     for repo in REPOS:
@@ -356,27 +359,42 @@ def close_branches(branch_name):
 
 
 # [List-of String] String Version -> None
-def create_hotfix_tags(hotfix_repos, branch_base, version):
-    branch_name = "{}{}".format(branch_base, version.short_string())
+def create_hotfix_tags(hotfix_repos, version):
+    """
+    Create hotfix tags from hotfix branch for given repos.
+    """
+    branch_name = "{}{}".format(BRANCH_BASE, version.short_string())
     tag_name = "{}{}".format(branch_name, version)
 
     for repo in hotfix_repos:
         util.chdir_repo(repo)
-        create_tags_for_repos(branch_name, tag_name)
+        create_tag_from_branch(branch_name, tag_name)
         util.chdir_base()
 
 
 # Version -> None
 def checkout_latest_hotfix_tags(version):
     for repo in REPOS:
-        tag = get_latest_hotfix_tag(repo, version)
-        print("checking out {} tag for {} repo".format(tag, repo))
-        checkout_tag(repo, tag)
+        checkout_latest_hotfix_tag(version, repo)
+
+
+def checkout_latest_hotfix_tag(version, repo):
+    def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
+
+    hotfix_version = get_last_hotfix(repo, version)
+    tag = get_tag_name(hotfix_version)
+    checkout_ref(repo, tag)
+
+
+# String Version -> Version
+def get_last_hotfix(repo, version):
+    hotfix_number = get_last_hotfix_number_in_repo(repo, version)
+    return Version(version.major, version.minor, hotfix_number)
 
 
 # Version [List-of String] -> None
 def create_hotfix_branches(version, repos_to_hotfix):
-    def get_branch_name(v): "{}{}".format(BRANCH_BASE, v.short_string())
+    def get_branch_name(v): return "{}{}".format(BRANCH_BASE, v.short_string())
     for repo in repos_to_hotfix:
         branch = get_branch_name(version)
         print(("creating hotfix branch {} for " +
@@ -385,13 +403,18 @@ def create_hotfix_branches(version, repos_to_hotfix):
 
 
 # None -> Version
-def get_hotfix_version():
+def get_current_hotfix_version_from_release_tags():
     version = deploy_jenkins.get_staged_release_version()
     last_hotfix = -1
     for repo in ["commcare", "commcare-odk"]:
         last_hotfix = max(last_hotfix,
                           get_last_hotfix_number_in_repo(repo, version))
     return Version(version.major, version.minor, last_hotfix)
+
+
+# None -> Version
+def get_next_hotfix_version_from_release_tags():
+    return get_current_hotfix_version_from_release_tags().get_next_hotfix()
 
 
 # String Version -> Integer
@@ -414,32 +437,15 @@ def get_last_hotfix_number_in_repo(repo, version):
         return hotfixes[-1]
 
 
-# String Version -> String
-def get_latest_hotfix_tag(repo, version):
-    util.chdir_repo(repo)
-    latest_version = version
-
-    def get_tag_name(v): "{}{}".format(BRANCH_BASE, v)
-
-    try:
-        for hotfix_number in range(version.hotfix, -1, -1):
-            latest_version = Version(latest_version.major,
-                                     latest_version.minor,
-                                     hotfix_number)
-
-            tag = get_tag_name(latest_version)
-            git_command = 'git ls-remote origin {}'.format(tag)
-            result = subprocess.check_output(git_command, shell=True)
-            if str(result).find('refs/tags/{}'.format(tag)) != -1:
-                return tag
-        raise Exception("Unable to find release tag for {}".format(repo))
-    finally:
-        util.chdir_base()
-
-
 # String String -> None
-def checkout_tag(repo, tag):
+def checkout_ref(repo, ref):
+    print("checking out {} ref for {} repo".format(ref, repo))
     util.chdir_repo(repo)
-    subprocess.call('git pull origin {}'.format(tag), shell=True)
-    subprocess.call('git checkout origin {}'.format(tag), shell=True)
+    subprocess.call('git pull --tags', shell=True)
+    subprocess.call('git checkout {}'.format(ref), shell=True)
     util.chdir_base()
+
+
+def close_hotfix_branches():
+    # TODO
+    return
