@@ -6,9 +6,12 @@ import re
 import sys
 import utils as util
 
+import deploy_jenkins
+
 from version import Version
 from user_interaction import prompt_until_answer
-from deploy_config import REPOS
+from deploy_config import REPOS, BRANCH_BASE
+
 
 # String String -> None
 def create_branches_and_update_versions(branch_base, version):
@@ -25,20 +28,35 @@ def create_branches_and_update_versions(branch_base, version):
     update_version_numbers()
     mark_version_as_alpha(branch_name)
 
+
 # String -> None
 def create_release_branches(branch_name):
     for repo in REPOS:
+        checkout_master(repo)
+        create_branch(repo, branch_name)
+        checkout_master(repo)
+
+
+# String -> None
+def checkout_master(repo):
         util.chdir_repo(repo)
         subprocess.call('git checkout master', shell=True)
+        util.chdir_base()
+
+
+# String String -> None
+def create_branch(repo, branch_name):
+        util.chdir_repo(repo)
         subprocess.call('git checkout -b {}'.format(branch_name), shell=True)
         subprocess.call('git push origin {}'.format(branch_name), shell=True)
-        subprocess.call('git checkout master', shell=True)
         util.chdir_base()
+
 
 # None -> None
 def update_version_numbers():
     update_commcare_version_numbers()
     update_odk_version_numbers()
+
 
 # None -> None
 def update_commcare_version_numbers():
@@ -58,6 +76,7 @@ def update_commcare_version_numbers():
                               'Automated version bump')
     util.chdir_base()
 
+
 # String String -> None
 def review_and_commit_changes(branch, commit_msg):
     diff = subprocess.check_output("git diff", shell=True)
@@ -73,6 +92,7 @@ def review_and_commit_changes(branch, commit_msg):
         print("Exiting during code level version updates due to " +
               "incorrect diff. You'll need to manually complete the deploy.")
         sys.exit(0)
+
 
 # (String -> String) String -> None
 def replace_func(func, file_name):
@@ -92,6 +112,7 @@ def replace_func(func, file_name):
 
     os.rename(tmp_file_name, file_name)
 
+
 # String -> String
 def replace_build_prop(file_contents):
     versionPattern = re.compile(r'app.version=(\d+).(\d+).(\d+)')
@@ -107,6 +128,7 @@ def replace_build_prop(file_contents):
                                                                    next_minor))
     return file_contents.replace('app.version={}'.format(version),
                                  'app.version={}'.format(next_minor))
+
 
 # String -> String
 def replace_config_engine_version(file_contents):
@@ -125,6 +147,7 @@ def replace_config_engine_version(file_contents):
 
     return file_contents.replace(platform_pattern, new_platform)
 
+
 # None -> None
 def update_odk_version_numbers():
     """
@@ -140,6 +163,7 @@ def update_odk_version_numbers():
 
     util.chdir_base()
 
+
 # String -> String
 def update_manifest_version(file_contents):
     versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
@@ -152,6 +176,7 @@ def update_manifest_version(file_contents):
     current_version = 'android:versionName="{}.{}"'.format(major, minor)
     next_version = 'android:versionName="{}.{}"'.format(major, minor + 1)
     return file_contents.replace(current_version, next_version)
+
 
 # None -> None
 def update_resource_string_version():
@@ -197,6 +222,7 @@ def update_resource_string_version():
 
     os.rename(tmp_file_name, file_name)
 
+
 # String -> None
 def mark_version_as_alpha(branch_name):
     util.chdir_repo('commcare')
@@ -209,6 +235,7 @@ def mark_version_as_alpha(branch_name):
     subprocess.call('git checkout master', shell=True)
     util.chdir_base()
 
+
 # String -> String
 def set_dev_tag_to_alpha(file_contents):
     existing_version_tag = 'commcare.version=v${app.version}dev'
@@ -218,6 +245,7 @@ def set_dev_tag_to_alpha(file_contents):
         raise Exception("unable to find dev version tag in build.properties")
 
     return file_contents.replace(existing_version_tag, new_version_tag)
+
 
 # String Version -> String
 def create_release_tags(branch_base, version):
@@ -236,6 +264,7 @@ def create_release_tags(branch_base, version):
 
     return tag_name
 
+
 # String -> None
 def mark_version_as_release(branch_name):
     util.chdir_repo('commcare')
@@ -250,6 +279,7 @@ def mark_version_as_release(branch_name):
 
     util.chdir_base()
 
+
 # String -> String
 def set_dev_tag_to_release(file_contents):
     existing_version_tag = 'commcare.version=v${app.version}alpha'
@@ -259,6 +289,7 @@ def set_dev_tag_to_release(file_contents):
         raise Exception("unable to find alpha version tag in build.properties")
 
     return file_contents.replace(existing_version_tag, new_version_tag)
+
 
 # String Integer -> None
 def add_hotfix_version_to_odk(branch_name, hotfix_count):
@@ -275,6 +306,7 @@ def add_hotfix_version_to_odk(branch_name, hotfix_count):
 
     util.chdir_base()
 
+
 # String -> String
 def set_hotfix_version_to_zero(file_contents):
     versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
@@ -288,6 +320,7 @@ def set_hotfix_version_to_zero(file_contents):
     version_with_hotfix_entry = '{}.0'.format(current_version)
     return file_contents.replace(current_version, version_with_hotfix_entry)
 
+
 # String String -> None
 def create_tags_for_repos(branch_name, tag_name):
     print("creating release tags '{}' from '{}' branches".format(tag_name,
@@ -297,12 +330,14 @@ def create_tags_for_repos(branch_name, tag_name):
         create_tag_from_branch(branch_name, tag_name)
         util.chdir_base()
 
+
 # String String -> None
 def create_tag_from_branch(branch_name, tag_name):
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git tag {}'.format(tag_name), shell=True)
     subprocess.call('git push origin {}'.format(tag_name), shell=True)
+
 
 # String -> None
 def close_branches(branch_name):
@@ -319,8 +354,9 @@ def close_branches(branch_name):
         subprocess.call('git branch -d {}'.format(branch_name), shell=True)
         util.chdir_base()
 
+
 # [List-of String] String Version -> None
-def schedule_hotfix_release(hotfix_repos, branch_base, version):
+def create_hotfix_tags(hotfix_repos, branch_base, version):
     branch_name = "{}{}".format(branch_base, version.short_string())
     tag_name = "{}{}".format(branch_name, version)
 
@@ -328,3 +364,82 @@ def schedule_hotfix_release(hotfix_repos, branch_base, version):
         util.chdir_repo(repo)
         create_tags_for_repos(branch_name, tag_name)
         util.chdir_base()
+
+
+# Version -> None
+def checkout_latest_hotfix_tags(version):
+    for repo in REPOS:
+        tag = get_latest_hotfix_tag(repo, version)
+        print("checking out {} tag for {} repo".format(tag, repo))
+        checkout_tag(repo, tag)
+
+
+# Version [List-of String] -> None
+def create_hotfix_branches(version, repos_to_hotfix):
+    def get_branch_name(v): "{}{}".format(BRANCH_BASE, v.short_string())
+    for repo in repos_to_hotfix:
+        branch = get_branch_name(version)
+        print(("creating hotfix branch {} for " +
+               "{} repo from latest tag".format(branch, repo)))
+        create_branch(repo, branch)
+
+
+# None -> Version
+def get_hotfix_version():
+    version = deploy_jenkins.get_staged_release_version()
+    last_hotfix = -1
+    for repo in ["commcare", "commcare-odk"]:
+        last_hotfix = max(last_hotfix,
+                          get_last_hotfix_number_in_repo(repo, version))
+    return Version(version.major, version.minor, last_hotfix)
+
+
+# String Version -> Integer
+def get_last_hotfix_number_in_repo(repo, version):
+        util.chdir_repo(repo)
+        filter_tag_cmd = "awk '{ print $2 }'"
+        filter_hotfix_number = "awk -F'.' '{ print $3 }'"
+
+        tag = "{}{}".format(BRANCH_BASE, version.short_string())
+        git_cmd = "git ls-remote origin 'refs/tags/{}.*'".format(tag)
+        get_hotfix_cmd = "{} | {} | {}".format(git_cmd,
+                                               filter_tag_cmd,
+                                               filter_hotfix_number)
+        result = subprocess.check_output(get_hotfix_cmd, shell=True)
+        hotfixes = list(map(int, filter(lambda x: x != b'',
+                                        result.split(b'\n'))))
+        hotfixes.sort()
+        util.chdir_base()
+
+        return hotfixes[-1]
+
+
+# String Version -> String
+def get_latest_hotfix_tag(repo, version):
+    util.chdir_repo(repo)
+    latest_version = version
+
+    def get_tag_name(v): "{}{}".format(BRANCH_BASE, v)
+
+    try:
+        for hotfix_number in range(version.hotfix, -1, -1):
+            latest_version = Version(latest_version.major,
+                                     latest_version.minor,
+                                     hotfix_number)
+
+            tag = get_tag_name(latest_version)
+            git_command = 'git ls-remote origin {}'.format(tag)
+            result = subprocess.check_output(git_command, shell=True)
+            if str(result).find('refs/tags/{}'.format(tag)) != -1:
+                return tag
+        raise Exception("Unable to find release tag for {}".format(repo))
+    finally:
+        util.chdir_base()
+
+
+# String String -> None
+def checkout_tag(repo, tag):
+    util.chdir_repo(repo)
+    subprocess.call('git pull origin {}'.format(tag), shell=True)
+    subprocess.call('git checkout origin {}'.format(tag), shell=True)
+    util.chdir_base()

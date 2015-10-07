@@ -4,41 +4,71 @@ import sys
 
 import deploy_jenkins
 import deploy_git
+from utils import branch_exists
+from user_interaction import verify_value_with_user, prompt_user_with_validation
 from deploy_config import REPOS, BRANCH_BASE
 
 HELP_MSG = """'create' creates the hotfix branches from the latest release tag.
 'release' creates release tags and updates jenkins job to use it.
+'finalize' updates jenkins hotfix version number and deletes release branch.
+'resume' checkouts out the relevant hotfix branches.
 'help' prints this message."""
+
 
 def create_hotfix():
     """
     Re-open release branch from latest release branch and update release jobs
     to build against those branches.
     """
-    # TODO: check that hotfix version was bumped correctly during deploy_release
-    version = deploy_jenkins.get_staged_release_version()
+    ver = deploy_git.get_hotfix_version()
+    verify_value_with_user("Creating {} hotfix. Is this correct?".format(ver),
+                           "The script detected an incorrect hotfix version.")
 
-    old_tag = "{}{}".format(BRANCH_BASE, version.get_last_hotfix())
-    branch = "{}{}".format(BRANCH_BASE, version.short_string())
+    def validate_user_repo_input(user_input):
+        return len(filter(user_input.split(), lambda s: s not in REPOS)) == 0
 
-    deploy_git.checkout_old_tag(old_tag)
-    deploy_jenkins.build_jobs_against_branch(branch)
+    hotfix_repo_msg = ("Which repos need to be hotfixed?\n" +
+                       "enter space delimited list including: " +
+                       (" ".join(REPOS)))
+    hotfix_repos_raw = prompt_user_with_validation(hotfix_repo_msg,
+                                                   True,
+                                                   validate_user_repo_input)
+    hotfix_repos = hotfix_repos_raw.split()
+
+    deploy_git.checkout_latest_hotfix_tags(ver)
+    deploy_git.create_hotfix_branches(ver, hotfix_repos)
+
+    branch = "{}{}".format(BRANCH_BASE, ver.short_string())
+    deploy_jenkins.build_jobs_against_hotfix_branches(branch, hotfix_repos)
+
 
 def deploy_hotfix():
     """
     Finalize hotfix by creating its tags and setting the release jobs to build
     off them
     """
-    version = deploy_jenkins.get_staged_release_version()
-    repos = get_hotfix_repos(version)
-    deploy_git.schedule_hotfix_release(repos, BRANCH_BASE, version)
+    version = deploy_git.get_hotfix_version()
+    hotfix_repos = get_hotfix_repos(version)
+    deploy_git.create_hotfix_tags(hotfix_repos, BRANCH_BASE, version)
     deploy_jenkins.inc_hotfix_version(version)
+
 
 # Version -> [List-of String]
 def get_hotfix_repos(version):
-    for repo in REPOS:
-        print(repo)
-    return []
+    branch_name = "{}{}".format(BRANCH_BASE, version.short_string())
+    return filter(lambda repo: branch_exists(repo, branch_name), REPOS)
+
+
+# None -> None
+def finalize_hotfix():
+    version = deploy_git.get_hotfix_version()
+    return
+
+# None -> None
+def resume_hotfix():
+    version = deploy_git.get_hotfix_version()
+    return
+
 
 def main():
     if len(sys.argv) > 2:
@@ -54,6 +84,10 @@ def main():
         create_hotfix()
     elif command == 'release':
         deploy_hotfix()
+    elif command == 'finalize':
+        finalize_hotfix()
+    elif command == 'resume':
+        resume_hotfix()
     elif command == 'help':
         print(HELP_MSG)
 

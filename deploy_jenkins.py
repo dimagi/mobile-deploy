@@ -15,6 +15,7 @@ j = jenkins.Jenkins('http://jenkins.dimagi.com',
 
 job_roots = ['javarosa-core-library', 'commcare-mobile', 'commcare-odk']
 
+
 # None -> String
 def create_new_release_jobs():
     """
@@ -42,6 +43,7 @@ def create_new_release_jobs():
 
     return version.short_string()
 
+
 # None -> Version
 def get_next_release_version():
     """
@@ -56,12 +58,14 @@ def get_next_release_version():
         raise Exception("Couldn't find next version to deploy")
     return Version(*map(int, current_version_raw))
 
+
 # Version -> None
 def assert_jobs_dont_exist(version):
     for job_root in job_roots:
         job = '{}-{}'.format(job_root, version.short_string())
         if j.job_exists(job):
             raise Exception("'{}' jenkins job already exists".format(job))
+
 
 # String String Version -> None
 def create_new_release_job(base_job_name, last_release, new_release_version):
@@ -84,11 +88,13 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
 
     j.create_job(new_release_job_name, xml)
 
+
 def replace_references_to_old_jobs(xml, last_release, new_version):
     for job_base in job_roots:
         xml = xml.replace('{}-{}'.format(job_base, last_release),
                           '{}-{}'.format(job_base, new_version))
     return xml
+
 
 def get_old_git_tag(xml):
     versionPattern = re.compile(r'refs/tags/commcare_(\d+).(\d+).(\d+)')
@@ -100,6 +106,7 @@ def get_old_git_tag(xml):
 
     return 'refs/tags/commcare_{}.{}.{}'.format(*branch_version_numbers)
 
+
 # Version -> None
 def set_build_numbers(new_version):
     """
@@ -110,6 +117,7 @@ def set_build_numbers(new_version):
     update_release_build_number('commcare-odk', new_version, 1)
     update_master_build_number('commcare-mobile', 2000)
     update_master_build_number('commcare-odk', 2000)
+
 
 # String Version Integer -> None
 def update_release_build_number(job_base, current_version, increment_by):
@@ -128,6 +136,7 @@ def update_release_build_number(job_base, current_version, increment_by):
 
     os.remove('nextBuildNumber')
 
+
 # String Integer -> None
 def update_master_build_number(job_name, increment_by):
     current_build_number = j.get_job_info(job_name)['nextBuildNumber']
@@ -143,10 +152,12 @@ def update_master_build_number(job_name, increment_by):
 
     os.remove('nextBuildNumber')
 
+
 def create_next_build_number_file(next_build_number):
     f = open('nextBuildNumber', 'w', encoding='utf-8', newline='\n')
     f.write('{}\n'.format(next_build_number))
     f.close()
+
 
 def upload_next_build_number(job_name, next_build_number):
     try:
@@ -161,6 +172,7 @@ def upload_next_build_number(job_name, next_build_number):
 
     # make jenkins read the build number change from memory
     reload_job_into_jenkins_memory(job_name)
+
 
 def show_manual_next_build_message(job_name, next_build_number):
     print('Failed setting nextBuildNumber for {}'.format(job_name))
@@ -178,6 +190,7 @@ def reload_job_into_jenkins_memory(job_name):
     """
     xml = j.get_job_config(job_name)
     j.reconfig_job(job_name, xml)
+
 
 # String -> None
 def inc_minor_version(job_name):
@@ -202,6 +215,7 @@ def inc_minor_version(job_name):
                       "VERSION={}".format(next_minor_version))
 
     j.reconfig_job(job_name, xml)
+
 
 # String -> None
 def inc_hotfix_version(version):
@@ -232,10 +246,12 @@ def inc_hotfix_version(version):
 def update_job_with_hotfix(current_version):
     return
 
+
 # String String Version -> None
 def make_release_jobs_use_tags(branch, tag, version):
     for job_root in job_roots:
         make_release_job_use_tag(job_root, branch, tag, version)
+
 
 # String String String Version -> None
 def make_release_job_use_tag(base_job_name, branch, tag, version):
@@ -249,12 +265,14 @@ def make_release_job_use_tag(base_job_name, branch, tag, version):
 
     j.reconfig_job(job_name, xml)
 
+
 # Version String -> None
 def build_release(version):
     j.build_job("javarosa-core-library-{}".format(version.short_string()))
     print(("Release builds have been triggered. " +
            "When they finish (~10 minutes) name them {} " +
            "and mark 'keep this build forever'").format(version))
+
 
 # None -> Version
 def get_staged_release_version():
@@ -278,3 +296,9 @@ def get_staged_release_version():
     if len(current_version_raw) != 3:
         raise Exception("Couldn't find next version to deploy")
     return Version(*map(int, current_version_raw))
+
+
+# String [List-of String] -> None
+def build_jobs_against_hotfix_branches(branch, hotfix_repos):
+    # TODO
+    return

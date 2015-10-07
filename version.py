@@ -20,6 +20,9 @@ class Version:
         return Version(self.major, self.minor, self.hotfix + 1)
 
     def get_last_hotfix(self):
+        if self.hotfix == 0:
+            error_message = "{} is at the first hotfix number".format(self)
+            raise VersionException(error_message)
         return Version(self.major, self.minor, self.hotfix - 1)
 
     def get_last_version_short(self):
@@ -28,3 +31,5 @@ class Version:
         else:
             return Version(self.major, self.minor - 1, 0).short_string()
 
+class VersionException(Exception):
+    pass

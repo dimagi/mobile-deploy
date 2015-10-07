@@ -24,7 +24,9 @@ def chdir_base():
 def unstaged_changes_present(repos):
     for repo in repos:
         chdir_repo(repo)
-        if b'' != subprocess.check_output("git status -s | sed '/^??/d'", shell=True):
+        command_result = subprocess.check_output("git status -s | sed '/^??/d'",
+                                                 shell=True)
+        if b'' != command_result:
             return True
         chdir_base()
     return False
@@ -42,8 +44,9 @@ def branch_exists_in_repos(branch_name, repos):
 def branch_exists(child_directory, branch_name):
     chdir_repo(child_directory)
     try:
-        result = subprocess.check_output('git show-ref {}'.format(branch_name), shell=True)
-        return str(result).find('remotes/origin/{}'.format(branch_name)) != -1
+        git_command = 'git ls-remote origin {}'.format(branch_name)
+        result = subprocess.check_output(git_command, shell=True)
+        return str(result).find('refs/heads/{}'.format(branch_name)) != -1
     except subprocess.CalledProcessError:
         return False
     finally:

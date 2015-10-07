@@ -1,5 +1,6 @@
 import sys
 
+
 # String Boolean -> Boolean
 def prompt_until_answer(msg, is_first_prompting):
     yn_msg = '{} ([y]/n)'.format(msg)
@@ -13,9 +14,21 @@ def prompt_until_answer(msg, is_first_prompting):
         return False
     return prompt_until_answer(msg, False)
 
+
 # String String -> None
 def verify_value_with_user(verify_msg, exit_msg):
     if not prompt_until_answer(verify_msg, True):
         print(exit_msg)
         sys.exit(0)
 
+
+# String Boolean [String -> Boolean] -> String
+def prompt_user_with_validation(msg, is_first_prompting, validation_func):
+    if is_first_prompting:
+        user_response = input(msg)
+    else:
+        user_response = input("Invalid answer, try again")
+
+    if validation_func(user_response):
+        return user_response
+    return prompt_until_answer(msg, False, validation_func)
