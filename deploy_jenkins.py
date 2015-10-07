@@ -1,12 +1,17 @@
 #!/bin/python
-import jenkins, re
-import subprocess, os
+import jenkins
+import re
+import subprocess
+import os
 
 from version import Version
 from user_interaction import verify_value_with_user
-import deploy_config as conf
+from deploy_config import JENKINS_USER, JENKINS_PASSWORD,\
+    BUILD_SERVER_USER, BUILD_SERVER
 
-j = jenkins.Jenkins('http://jenkins.dimagi.com', conf.JENKINS_USER, conf.JENKINS_PASSWORD)
+j = jenkins.Jenkins('http://jenkins.dimagi.com',
+                    JENKINS_USER,
+                    JENKINS_PASSWORD)
 
 job_roots = ['javarosa-core-library', 'commcare-mobile', 'commcare-odk']
 
@@ -20,8 +25,11 @@ def create_new_release_jobs():
 
     last_release = version.get_last_version_short()
 
-    verify_value_with_user("Are these values correct?: last release: {}, this release {}".format(last_release, version),
-            "According to you, release versions read from jenkins are incorrect.")
+    verify_message = ("Are these values correct?: " +
+                      "last release: {}, this release {}").format(last_release,
+                                                                  version)
+    exit_message = "Release versions from jenkins are incorrect, exiting."
+    verify_value_with_user(verify_message, exit_message)
 
     assert_jobs_dont_exist(version)
 
@@ -63,21 +71,23 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
     new_version = new_release_version.short_string()
     new_release_job_name = '{}-{}'.format(base_job_name, new_version)
 
-    print("creating new job '{}' from old job '{}'".format(new_release_job_name, last_release_job_name)) 
+    print("Creating job '{}' from old job '{}'".format(new_release_job_name,
+                                                       last_release_job_name))
 
     xml = replace_references_to_old_jobs(xml, last_release, new_version)
 
     old_tag_name = get_old_git_tag(xml)
     print("old git tag: {}".format(old_tag_name))
 
-    xml = xml.replace(old_tag_name, 'refs/heads/commcare_{}'.format(new_version))
+    xml = xml.replace(old_tag_name,
+                      'refs/heads/commcare_{}'.format(new_version))
 
     j.create_job(new_release_job_name, xml)
 
 def replace_references_to_old_jobs(xml, last_release, new_version):
     for job_base in job_roots:
         xml = xml.replace('{}-{}'.format(job_base, last_release),
-                '{}-{}'.format(job_base, new_version))
+                          '{}-{}'.format(job_base, new_version))
     return xml
 
 def get_old_git_tag(xml):
@@ -86,7 +96,7 @@ def get_old_git_tag(xml):
 
     if len(branch_version_numbers) != 3:
         raise Exception("couldn't find git branch reference of format " +
-                "refs/tags/commcare_X.X.X")
+                        "refs/tags/commcare_X.X.X")
 
     return 'refs/tags/commcare_{}.{}.{}'.format(*branch_version_numbers)
 
@@ -108,11 +118,10 @@ def update_release_build_number(job_base, current_version, increment_by):
 
     new_job = '{}-{}'.format(job_base, current_version.short_string())
 
-
     next_build_number = int(current_build_number) + increment_by
 
-    print('INFO:\t{} build number: {}'.format(old_job, current_build_number))
-    print('\t\t setting {} build number to {}'.format(new_job, next_build_number))
+    print('INFO:\t{} build #: {}'.format(old_job, current_build_number))
+    print('\t\tsetting {} build # to {}'.format(new_job, next_build_number))
 
     create_next_build_number_file(next_build_number)
     upload_next_build_number(new_job, next_build_number)
@@ -125,7 +134,9 @@ def update_master_build_number(job_name, increment_by):
 
     next_build_number = int(current_build_number) + increment_by
 
-    print('INFO:\tupdating {} build number from {} to {}'.format(job_name, current_build_number, next_build_number))
+    print('INFO\tupdating {} build # from {} to {}'.format(job_name,
+                                                           current_build_number,
+                                                           next_build_number))
 
     create_next_build_number_file(next_build_number)
     upload_next_build_number(job_name, next_build_number)
@@ -139,14 +150,25 @@ def create_next_build_number_file(next_build_number):
 
 def upload_next_build_number(job_name, next_build_number):
     try:
-        subprocess.call('scp nextBuildNumber {0}@{1}:/var/lib/jenkins/jobs/{2}/nextBuildNumber'.format(conf.BUILD_SERVER_USER, conf.BUILD_SERVER, job_name), shell=True)
+        build_path = '/var/lib/jenkins/jobs/{}/nextBuildNumber'.format(job_name)
+        scp_command = 'scp nextBuildNumber {}@{}:{}'.format(BUILD_SERVER_USER,
+                                                            BUILD_SERVER,
+                                                            build_path)
+        subprocess.call(scp_command, shell=True)
     except Exception:
-        print('Failed setting nextBuildNumber for {}'.format(job_name))
-        print("Please manually set {}'s nextBuildNumber to {} at \n http://jenkins.dimagi.com/job/{}/nextbuildnumber/".format(job_name, next_build_number, job_name))
+        show_manual_next_build_message(job_name, next_build_number)
         return
 
     # make jenkins read the build number change from memory
     reload_job_into_jenkins_memory(job_name)
+
+def show_manual_next_build_message(job_name, next_build_number):
+    print('Failed setting nextBuildNumber for {}'.format(job_name))
+    next_build_url = ("http://jenkins.dimagi.com/" +
+                      "job/{}/nextbuildnumber/").format(job_name)
+    print(("Please manually set {}'s nextBuildNumber " +
+           "to {} at \n {}").format(job_name, next_build_number,
+                                    next_build_url))
 
 
 def reload_job_into_jenkins_memory(job_name):
@@ -162,7 +184,7 @@ def inc_minor_version(job_name):
     """
     Bump the VERSION build parameter by a minor version.
     """
-    print("Incrementing the minor version number on {} jenkins job".format(job_name))
+    print("Incrementing the minor version # on {} jenkins job".format(job_name))
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
@@ -172,16 +194,20 @@ def inc_minor_version(job_name):
     current_version = Version(*map(int, current_version_raw))
     next_minor_version = current_version.get_next_minor_release()
 
-    print('changing {} version reference {} to {}'.format(job_name, current_version, next_minor_version))
+    print('changing {} version reference {} to {}'.format(job_name,
+                                                          current_version,
+                                                          next_minor_version))
 
-    xml = xml.replace("VERSION={}".format(current_version), "VERSION={}".format(next_minor_version))
+    xml = xml.replace("VERSION={}".format(current_version),
+                      "VERSION={}".format(next_minor_version))
 
     j.reconfig_job(job_name, xml)
 
 # String -> None
 def inc_hotfix_version(version):
     """
-    Bump the commcare-mobile VERSION build parameter of a release job by a hotfix version.
+    Bump the commcare-mobile VERSION build parameter of a release job by a
+    hotfix version.
     """
     job_name = "commcare-mobile-{}".format(version.short_string())
     xml = j.get_job_config(job_name)
@@ -193,9 +219,12 @@ def inc_hotfix_version(version):
     current_version = Version(*map(int, current_version_raw))
     next_hotfix_version = current_version.get_next_hotfix()
 
-    print('changing {} version reference {} to {}'.format(job_name, current_version, next_hotfix_version))
+    print('changing {} version reference {} to {}'.format(job_name,
+                                                          current_version,
+                                                          next_hotfix_version))
 
-    xml = xml.replace("VERSION={}".format(current_version), "VERSION={}".format(next_hotfix_version))
+    xml = xml.replace("VERSION={}".format(current_version),
+                      "VERSION={}".format(next_hotfix_version))
 
     j.reconfig_job(job_name, xml)
 
@@ -216,14 +245,16 @@ def make_release_job_use_tag(base_job_name, branch, tag, version):
 
     xml = j.get_job_config(job_name)
     xml = xml.replace("refs/heads/{}".format(branch),
-            "refs/tags/{}".format(tag))
+                      "refs/tags/{}".format(tag))
 
     j.reconfig_job(job_name, xml)
 
 # Version String -> None
 def build_release(version):
     j.build_job("javarosa-core-library-{}".format(version.short_string()))
-    print("Release builds have been triggered. When they finish (~10 minutes) name them {} and mark 'keep this build forever'".format(version))
+    print(("Release builds have been triggered. " +
+           "When they finish (~10 minutes) name them {} " +
+           "and mark 'keep this build forever'").format(version))
 
 # None -> Version
 def get_staged_release_version():
@@ -240,10 +271,10 @@ def get_staged_release_version():
         raise Exception("Couldn't find next version to deploy")
     next_version = Version(*map(int, next_version_raw))
 
-    staged_release_job = 'commcare-mobile-{}'.format(next_version.get_last_version_short())
-    release_xml = j.get_job_config(staged_release_job )
+    last_version = next_version.get_last_version_short()
+    staged_release_job = 'commcare-mobile-{}'.format(last_version)
+    release_xml = j.get_job_config(staged_release_job)
     current_version_raw = versionPattern.search(release_xml).groups()
     if len(current_version_raw) != 3:
         raise Exception("Couldn't find next version to deploy")
     return Version(*map(int, current_version_raw))
-
