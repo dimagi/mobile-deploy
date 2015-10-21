@@ -198,21 +198,19 @@ def update_resource_string_version():
     for line in read_file.readlines():
         if on_version_line == 1:
             # minor version
-            print(line)
             versionPattern = re.compile(r'<item>(\d+)<')
-            result = versionPattern.search(file_contents)
+            result = versionPattern.search(line)
             if result is None:
                 raise Exception("couldn't parse version")
-            version = int(versionPattern.search(file_contents).groups()[0])
-            line = "<item>{}</item>\n".format(version + 1)
+            version = int(result.groups()[0])
+            leading_whitespace = line.split('<')[0]
+            line = "{}<item>{}</item>\n".format(leading_whitespace, version + 1)
             on_version_line = -1
         elif on_version_line == 0:
             # major version
             on_version_line = 1
-            print(line)
         if line.find("commcare_version") != -1:
             on_version_line = 0
-            print(line)
         file_contents += line
 
     read_file.close()
@@ -383,12 +381,12 @@ def checkout_latest_hotfix_tag(version, repo):
 
     hotfix_version = get_last_hotfix(repo, version)
     tag = get_tag_name(hotfix_version)
-    checkout_ref(repo, tag)
+    util.checkout_ref(repo, tag)
 
 
 # String Version -> Version
 def get_last_hotfix(repo, version):
-    hotfix_number = get_last_hotfix_number_in_repo(repo, version)
+    hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
     return Version(version.major, version.minor, hotfix_number)
 
 
@@ -408,42 +406,13 @@ def get_current_hotfix_version_from_release_tags():
     last_hotfix = -1
     for repo in ["commcare", "commcare-odk"]:
         last_hotfix = max(last_hotfix,
-                          get_last_hotfix_number_in_repo(repo, version))
+                          util.get_last_hotfix_number_in_repo(repo, version))
     return Version(version.major, version.minor, last_hotfix)
 
 
 # None -> Version
 def get_next_hotfix_version_from_release_tags():
     return get_current_hotfix_version_from_release_tags().get_next_hotfix()
-
-
-# String Version -> Integer
-def get_last_hotfix_number_in_repo(repo, version):
-        util.chdir_repo(repo)
-        filter_tag_cmd = "awk '{ print $2 }'"
-        filter_hotfix_number = "awk -F'.' '{ print $3 }'"
-
-        tag = "{}{}".format(BRANCH_BASE, version.short_string())
-        git_cmd = "git ls-remote origin 'refs/tags/{}.*'".format(tag)
-        get_hotfix_cmd = "{} | {} | {}".format(git_cmd,
-                                               filter_tag_cmd,
-                                               filter_hotfix_number)
-        result = subprocess.check_output(get_hotfix_cmd, shell=True)
-        hotfixes = list(map(int, filter(lambda x: x != b'',
-                                        result.split(b'\n'))))
-        hotfixes.sort()
-        util.chdir_base()
-
-        return hotfixes[-1]
-
-
-# String String -> None
-def checkout_ref(repo, ref):
-    print("checking out {} ref for {} repo".format(ref, repo))
-    util.chdir_repo(repo)
-    subprocess.call('git pull --tags', shell=True)
-    subprocess.call('git checkout {}'.format(ref), shell=True)
-    util.chdir_base()
 
 
 def close_hotfix_branches():

@@ -4,7 +4,7 @@ import sys
 
 import deploy_jenkins
 import deploy_git
-from utils import branch_exists
+from utils import branch_exists, checkout_ref
 from user_interaction import verify_value_with_user, prompt_user_with_validation
 from deploy_config import REPOS, BRANCH_BASE
 
@@ -113,10 +113,15 @@ def resume_hotfix():
     version = deploy_git.get_next_hotfix_version_from_release_tags()
     hotfix_repos = get_hotfix_repos(version)
 
+    if len(hotfix_repos) == 0:
+        print("No open hotfix branches;")
+        print("make sure you're in the process of hotfixing?")
+        sys.exit(0)
+
     branch_name = "{}{}".format(BRANCH_BASE, version.short_string())
     for repo in REPOS:
         if repo in hotfix_repos:
-            deploy_git.checkout_ref(repo, branch_name)
+            checkout_ref(repo, branch_name)
         else:
             deploy_git.checkout_latest_hotfix_tag(version, repo)
 

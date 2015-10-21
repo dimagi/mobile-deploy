@@ -4,9 +4,10 @@ import re
 import subprocess
 import os
 
+import utils as util
+
 from version import Version
 from user_interaction import verify_value_with_user
-from deploy_git import get_last_hotfix_number_in_repo
 from deploy_config import JENKINS_USER, JENKINS_PASSWORD,\
     BUILD_SERVER_USER, BUILD_SERVER, BRANCH_BASE
 
@@ -323,6 +324,6 @@ def build_jobs_against_hotfix_branches(hotfix_repos):
     def get_branch_name(v): "{}{}".format(BRANCH_BASE, v.short_string())
     version = get_staged_release_version()
     for repo in hotfix_repos:
-        tag = get_last_hotfix_number_in_repo(repo, version)
+        tag = util.get_last_hotfix_number_in_repo(repo, version)
         make_release_job_use_branch(repo_to_jobs[repo], version,
                                     tag, get_branch_name(version))

@@ -1,6 +1,7 @@
 import subprocess
 import os
-import deploy_config as conf
+from deploy_config import BASE_DIR, BRANCH_BASE
+
 
 # None -> None
 def pull_masters(repos):
@@ -12,12 +13,12 @@ def pull_masters(repos):
 
 # String -> None
 def chdir_repo(repo):
-    os.chdir(os.path.join(conf.BASE_DIR, repo))
+    os.chdir(os.path.join(BASE_DIR, repo))
 
 
 # None -> None
 def chdir_base():
-    os.chdir(conf.BASE_DIR)
+    os.chdir(BASE_DIR)
 
 
 # None -> Boolean
@@ -57,3 +58,32 @@ def branch_exists(child_directory, branch_name):
 def print_with_newlines(msg):
     for line in msg.split('\\n'):
         print(line)
+
+
+# String Version -> Integer
+def get_last_hotfix_number_in_repo(repo, version):
+        chdir_repo(repo)
+        filter_tag_cmd = "awk '{ print $2 }'"
+        filter_hotfix_number = "awk -F'.' '{ print $3 }'"
+
+        tag = "{}{}".format(BRANCH_BASE, version.short_string())
+        git_cmd = "git ls-remote origin 'refs/tags/{}.*'".format(tag)
+        get_hotfix_cmd = "{} | {} | {}".format(git_cmd,
+                                               filter_tag_cmd,
+                                               filter_hotfix_number)
+        result = subprocess.check_output(get_hotfix_cmd, shell=True)
+        hotfixes = list(map(int, filter(lambda x: x != b'',
+                                        result.split(b'\n'))))
+        hotfixes.sort()
+        chdir_base()
+
+        return hotfixes[-1]
+
+
+# String String -> None
+def checkout_ref(repo, ref):
+    print("checking out {} ref for {} repo".format(ref, repo))
+    chdir_repo(repo)
+    subprocess.call('git pull --tags', shell=True)
+    subprocess.call('git checkout {}'.format(ref), shell=True)
+    chdir_base()
