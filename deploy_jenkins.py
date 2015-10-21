@@ -3,6 +3,7 @@ import jenkins
 import re
 import subprocess
 import os
+import xml.etree.ElementTree as ET
 
 import utils as util
 
@@ -10,6 +11,9 @@ from version import Version
 from user_interaction import verify_value_with_user
 from deploy_config import JENKINS_USER, JENKINS_PASSWORD,\
     BUILD_SERVER_USER, BUILD_SERVER, BRANCH_BASE
+
+MOBILE_VIEW_NAME = "CommCare Mobile"
+ARCHIVED_MOBILE_VIEW_NAME = "CommCare Mobile Archive"
 
 j = jenkins.Jenkins('http://jenkins.dimagi.com',
                     JENKINS_USER,
@@ -41,6 +45,7 @@ def create_new_release_jobs():
 
     for job_root in job_roots:
         create_new_release_job(job_root, last_release, version)
+        archive_old_release_job(job_root, version)
 
     set_build_numbers(version)
     inc_minor_version('commcare-mobile')
@@ -86,12 +91,15 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
     xml = replace_references_to_old_jobs(xml, last_release, new_version)
 
     old_tag_name = get_old_git_tag(xml)
-    print("old git tag: {}".format(old_tag_name))
+    new_ref_name = 'refs/heads/commcare_{}'.format(new_version)
+    print("Replacing git tag from {} to {}".format(old_tag_name, new_ref_name))
 
-    xml = xml.replace(old_tag_name,
-                      'refs/heads/commcare_{}'.format(new_version))
+    xml = xml.replace(old_tag_name, new_ref_name)
 
     j.create_job(new_release_job_name, xml)
+    print("Adding {} job to {} view".format(new_release_job_name,
+                                            MOBILE_VIEW_NAME))
+    add_job_to_view(new_release_job_name, MOBILE_VIEW_NAME)
 
 
 def replace_references_to_old_jobs(xml, last_release, new_version):
@@ -110,6 +118,45 @@ def get_old_git_tag(xml):
                         "refs/tags/commcare_X.X.X")
 
     return 'refs/tags/commcare_{}.{}.{}'.format(*branch_version_numbers)
+
+
+# String Version -> None
+def archive_old_release_job(base_job_name, version):
+    two_release_ago = Version(version.major, version.minor - 2, 0)
+    last_release_job_name = '{}-{}'.format(base_job_name,
+                                           two_release_ago.short_string())
+
+    print("moving {} to {} view".format(last_release_job_name,
+                                        ARCHIVED_MOBILE_VIEW_NAME))
+
+    remove_job_from_view(last_release_job_name, MOBILE_VIEW_NAME)
+    add_job_to_view(last_release_job_name, ARCHIVED_MOBILE_VIEW_NAME)
+
+
+# String -> None
+def add_job_to_view(job_name, view_name):
+    xml = j.get_view_config(view_name)
+    tree = ET.fromstring(xml)
+    jobs = tree.find('jobNames')
+    e = ET.SubElement(jobs, 'string')
+    e.text = job_name
+
+    new_xml = ET.tostring(tree).decode('utf-8')
+    j.reconfig_view(view_name, new_xml)
+
+
+# String -> None
+def remove_job_from_view(job_name, view_name):
+    xml = j.get_view_config(view_name)
+    tree = ET.fromstring(xml)
+    jobs = tree.find('jobNames')
+    for job in jobs.getchildren():
+        if job.text == job_name:
+            jobs.remove(job)
+            break
+
+    new_xml = ET.tostring(tree).decode('utf-8')
+    j.reconfig_view(view_name, new_xml)
 
 
 # Version -> None

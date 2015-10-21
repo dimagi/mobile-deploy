@@ -18,7 +18,7 @@ def create_branches_and_update_versions(branch_base, version):
     if util.unstaged_changes_present(REPOS):
         raise Exception("one of the branches has unstaged changes, " +
                         "please stash and try again")
-    util.pull_masters()
+    util.pull_masters(REPOS)
 
     branch_name = "{}{}".format(branch_base, version)
     if util.branch_exists_in_repos(branch_name, REPOS):
