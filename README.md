@@ -10,11 +10,30 @@ The [CommCare mobile release process](https://confluence.dimagi.com/display/MD/C
 
 ## deploy
 
+`./deploy help` will give you argument descriptions. 
+
+The workflow:
 * `./deploy create`
 * Follow __Make new build available on HQ__ instructions on [release page](https://confluence.dimagi.com/display/MD/CommCare+Release+Process) 
 * Run QA
 * `./deploy release`
+* Wait for builds to complete (might have to trigger them). Lock in and name the builds with the CommCare version
 * Follow __Perform the Release__ instructions on [release page](https://confluence.dimagi.com/display/MD/CommCare+Release+Process)
 * Follow __Reconcile Branches__ instructions on [release page](https://confluence.dimagi.com/display/MD/CommCare+Release+Process)
+* `./deploy finalize`
 
 ## hotfix
+`./hotfix help` will give you argument descriptions. 
+
+The workflow:
+* `./hotfix create`
+* perform hotfix dev work, merging into the branch created by the above command
+* `./hotfix release`
+* Wait for builds to complete (might have to trigger them). Lock in and name the builds with the CommCare version
+* `./hotfix finalize`
+
+In case you need to do work on other branches while in the middle of a hotfix, you can always resume hotfix work by running `./hotfix resume`. This will checkout hotfix branches created in the `create` step and latest release tags for the remaining branches.
+
+## TODO
+* the code that adds/removs jobs from jenkins views doesn't seem to be working
+* auto-compile release notes from PRs
