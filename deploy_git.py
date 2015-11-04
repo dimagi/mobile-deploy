@@ -343,7 +343,7 @@ def create_tag_from_branch(branch_name, tag_name):
 
 # String -> None
 def close_branches(branch_name):
-    if not util.branch_exists_in_repos(branch_name):
+    if not util.branch_exists_in_repos(branch_name, REPOS):
         raise Exception("{} branch doesn't exists".format(branch_name))
     print("removing local instances of the {} branch".format(branch_name))
     print("You will also want to close the remote github branches")

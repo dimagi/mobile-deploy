@@ -69,7 +69,7 @@ def backup_old_translations_file():
 def create_updated_translations_file(new_text_blocks):
     header_prefix = '# *** '
     header_suffix = ' ***'
-    with open(hq_translations_filename, 'w') as f:
+    with open(hq_translations_filename, 'w', encoding='utf-8') as f:
         os.utime(hq_translations_filename, None)
         num_blocks = len(all_filenames)
         for i in range(num_blocks):
@@ -94,7 +94,7 @@ def get_updated_translations(repo, relative_path, filename):
     util.chdir_repo(repo)
     subprocess.call('git checkout master', shell=True)
     os.chdir(relative_path)
-    with open(filename, 'r') as f:
+    with open(filename, 'r', encoding='utf-8') as f:
         return f.read().strip()
 
 
