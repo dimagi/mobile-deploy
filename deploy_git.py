@@ -204,7 +204,8 @@ def update_resource_string_version():
                 raise Exception("couldn't parse version")
             version = int(result.groups()[0])
             leading_whitespace = line.split('<')[0]
-            line = "{}<item>{}</item>\n".format(leading_whitespace, version + 1)
+            line = "{}<item>{}</item>\n".format(leading_whitespace,
+                                                version + 1)
             on_version_line = -1
         elif on_version_line == 0:
             # major version
@@ -225,8 +226,8 @@ def update_resource_string_version():
 def mark_version_as_alpha(branch_name):
     util.chdir_repo('commcare')
 
-    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     replace_func(set_dev_tag_to_alpha, 'application/build.properties')
     commit_message = 'Automated commit adding dev tag to commcare version'
     review_and_commit_changes(branch_name, commit_message)
@@ -268,11 +269,11 @@ def mark_version_as_release(branch_name):
     util.chdir_repo('commcare')
     print("marking commcare {} branch for release".format(branch_name))
 
-    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
 
     replace_func(set_dev_tag_to_release, 'application/build.properties')
-    commit_message = 'Automated commit removing alpha tag from commcare version'
+    commit_message = "Automated: removing 'alpha' from version"
     review_and_commit_changes(branch_name, commit_message)
 
     util.chdir_base()
@@ -295,11 +296,11 @@ def add_hotfix_version_to_odk(branch_name, hotfix_count):
 
     print("adding hotfix version to commcare-odk branch {}".format(branch_name))
 
-    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
+    subprocess.call('git pull origin {}'.format(branch_name), shell=True)
 
     replace_func(set_hotfix_version_to_zero, 'app/AndroidManifest.xml')
-    commit_message = 'Automated commit adding hotfix version to AndroidManifest'
+    commit_message = 'Automated: adding hotfix version to AndroidManifest'
     review_and_commit_changes(branch_name, commit_message)
 
     util.chdir_base()
