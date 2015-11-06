@@ -5,7 +5,8 @@ import sys
 import deploy_jenkins
 import deploy_git
 from utils import branch_exists, checkout_ref
-from user_interaction import verify_value_with_user, prompt_user_with_validation
+from user_interaction import verify_value_with_user, \
+    prompt_user_with_validation
 from deploy_config import REPOS, BRANCH_BASE
 
 HELP_MSG = """'create' creates the hotfix branches from the latest release tag.
@@ -18,8 +19,8 @@ HELP_MSG = """'create' creates the hotfix branches from the latest release tag.
 def create_hotfix():
     """
     Checkout latest release tag for repos, ask user which repos need hotfixing,
-    create hotfix branches for those repos and set jenkins release jobs to build
-    off the newly created hotfix branches.
+    create hotfix branches for those repos and set jenkins release jobs to
+    build off the newly created hotfix branches.
 
     NOTE: Due to repo dependencies, every hotfix effects commcare-odk, but not
     every hotfix effects other repos. Thus, the release tags may not match up
@@ -46,12 +47,12 @@ def get_hotfix_repos_from_user():
     """
     # String -> Boolean
     def validate_user_repo_input(user_input):
-        invalid_repos = filter(user_input.split(), lambda s: s not in REPOS)
+        invalid_repos = filter(lambda s: s not in REPOS, user_input.split())
         return len(list(invalid_repos)) == 0
 
-    hotfix_repo_msg = ("Which repos need to be hotfixed?\n" +
-                       "enter space delimited list including: " +
-                       (" ".join(REPOS)))
+    hotfix_repo_msg = (("Which repos need to be hotfixed?\n" +
+                        "enter space delimited list including: " +
+                        "{}\n").format(" ".join(REPOS)))
     hotfix_repos_raw = prompt_user_with_validation(hotfix_repo_msg,
                                                    True,
                                                    validate_user_repo_input)
@@ -106,7 +107,8 @@ def finalize_hotfix():
 # None -> None
 def resume_hotfix():
     """
-    Checkout the last release tags and open hotfix branches for all repositories
+    Checkout the last release tags and open hotfix branches for all
+    repositories
     """
     print("Checking out the hotfix branches and last release for other repos.")
     print("(assumes the release tag hasn't been created for current hotfix)")

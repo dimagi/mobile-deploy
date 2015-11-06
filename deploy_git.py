@@ -397,7 +397,7 @@ def create_hotfix_branches(version, repos_to_hotfix):
     for repo in repos_to_hotfix:
         branch = get_branch_name(version)
         print(("creating hotfix branch {} for " +
-               "{} repo from latest tag".format(branch, repo)))
+               "{} repo from latest tag").format(branch, repo))
         create_branch(repo, branch)
 
 

@@ -173,7 +173,8 @@ def set_build_numbers(new_version):
 
 # String Version Integer -> None
 def update_release_build_number(job_base, current_version, increment_by):
-    old_job = '{}-{}'.format(job_base, current_version.get_last_version_short())
+    old_job = '{}-{}'.format(job_base,
+                             current_version.get_last_version_short())
     current_build_number = j.get_job_info(old_job)['nextBuildNumber']
 
     new_job = '{}-{}'.format(job_base, current_version.short_string())
@@ -195,9 +196,10 @@ def update_master_build_number(job_name, increment_by):
 
     next_build_number = int(current_build_number) + increment_by
 
-    print('INFO\tupdating {} build # from {} to {}'.format(job_name,
-                                                           current_build_number,
-                                                           next_build_number))
+    print("INFO\tupdating {} build # " +
+          "from {} to {}".format(job_name,
+                                 current_build_number,
+                                 next_build_number))
 
     create_next_build_number_file(next_build_number)
     upload_next_build_number(job_name, next_build_number)
@@ -211,21 +213,23 @@ def create_next_build_number_file(next_build_number):
     f.close()
 
 
-def upload_next_build_number(job_name, next_build_number):
+# String Integer -> None
+def upload_next_build_number(job, next_build_number):
     try:
-        build_path = '/var/lib/jenkins/jobs/{}/nextBuildNumber'.format(job_name)
+        build_path = '/var/lib/jenkins/jobs/{}/nextBuildNumber'.format(job)
         scp_command = 'scp nextBuildNumber {}@{}:{}'.format(BUILD_SERVER_USER,
                                                             BUILD_SERVER,
                                                             build_path)
         subprocess.call(scp_command, shell=True)
     except Exception:
-        show_manual_next_build_message(job_name, next_build_number)
+        show_manual_next_build_message(job, next_build_number)
         return
 
     # make jenkins read the build number change from memory
-    reload_job_into_jenkins_memory(job_name)
+    reload_job_into_jenkins_memory(job)
 
 
+# String Integer -> None
 def show_manual_next_build_message(job_name, next_build_number):
     print('Failed setting nextBuildNumber for {}'.format(job_name))
     next_build_url = ("http://jenkins.dimagi.com/" +
@@ -235,6 +239,7 @@ def show_manual_next_build_message(job_name, next_build_number):
                                     next_build_url))
 
 
+# String -> None
 def reload_job_into_jenkins_memory(job_name):
     """
     Force jenkins to reload a job config from memory. Necessary if config
@@ -249,7 +254,8 @@ def inc_minor_version(job_name):
     """
     Bump the VERSION build parameter by a minor version.
     """
-    print("Incrementing the minor version # on {} jenkins job".format(job_name))
+    print(("Incrementing the minor version # on " +
+           "{} jenkins job").format(job_name))
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
@@ -316,6 +322,10 @@ def make_release_job_use_tag(base_job_name, version, branch, tag):
 def make_release_job_use_branch(base_job_name, version, tag, branch):
     full_tag = "refs/tags/{}".format(tag)
     full_branch = "refs/heads/{}".format(branch)
+
+    print(("changing jenkins job {} to build against " +
+           "{} instead of {}").format(base_job_name, full_branch, full_tag))
+
     replace_job_git_reference(base_job_name, version, full_tag, full_branch)
 
 
@@ -362,15 +372,25 @@ def get_staged_release_version():
     return Version(*map(int, current_version_raw))
 
 
-# String [List-of String] -> None
+# [List-of String] -> None
 def build_jobs_against_hotfix_branches(hotfix_repos):
     """
     Make release jobs for hotfix repos build off of the newly opened hotfix
     branches.
     """
-    def get_branch_name(v): "{}{}".format(BRANCH_BASE, v.short_string())
+    def get_branch_name(v): return "{}{}".format(BRANCH_BASE, v.short_string())
+
+    def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
+
     version = get_staged_release_version()
+
     for repo in hotfix_repos:
-        tag = util.get_last_hotfix_number_in_repo(repo, version)
-        make_release_job_use_branch(repo_to_jobs[repo], version,
-                                    tag, get_branch_name(version))
+        last_hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
+        hotfix_version = Version(version.major,
+                                 version.minor,
+                                 last_hotfix_number)
+        tag = get_tag_name(hotfix_version)
+        job_name = repo_to_jobs[repo]
+        branch = get_branch_name(version)
+        make_release_job_use_branch(job_name, version,
+                                    tag, branch)
