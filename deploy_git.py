@@ -363,7 +363,7 @@ def create_hotfix_tags(hotfix_repos, version):
     Create hotfix tags from hotfix branch for given repos.
     """
     branch_name = "{}{}".format(BRANCH_BASE, version.short_string())
-    tag_name = "{}{}".format(branch_name, version)
+    tag_name = "{}{}".format(BRANCH_BASE, version)
 
     for repo in hotfix_repos:
         util.chdir_repo(repo)

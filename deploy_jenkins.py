@@ -394,3 +394,29 @@ def build_jobs_against_hotfix_branches(hotfix_repos):
         branch = get_branch_name(version)
         make_release_job_use_branch(job_name, version,
                                     tag, branch)
+
+
+# [List-of String] -> None
+def build_jobs_against_hotfix_tags(hotfix_repos):
+    """
+    Make release jobs for hotfix repos build off of the newly created hotfix
+    tags.
+    """
+    def get_branch_name(v): return "{}{}".format(BRANCH_BASE, v.short_string())
+
+    def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
+
+    version = get_staged_release_version()
+
+    for repo in hotfix_repos:
+        last_hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
+        hotfix_version = Version(version.major,
+                                 version.minor,
+                                 last_hotfix_number)
+        tag = get_tag_name(hotfix_version)
+        job_name = repo_to_jobs[repo]
+        branch = get_branch_name(version)
+        print("job " + job_name)
+        print(repo + " building off tag ")
+        print(tag)
+        make_release_job_use_tag(job_name, version, branch, tag)
