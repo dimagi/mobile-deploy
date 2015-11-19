@@ -28,7 +28,6 @@ def create_hotfix():
     bumped to the latest odk hotfix.
     """
     # TODO: check for unstaged changes
-    # TODO: bump hotfix version
     ver = deploy_git.get_next_hotfix_version_from_release_tags()
     verify_value_with_user("Creating {} hotfix. Is this correct?".format(ver),
                            "The script detected an incorrect hotfix version.")

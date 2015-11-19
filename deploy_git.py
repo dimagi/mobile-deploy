@@ -67,13 +67,29 @@ def update_commcare_version_numbers():
     util.chdir_repo('commcare')
     subprocess.call('git checkout master', shell=True)
 
-    replace_func(replace_build_prop,
+    replace_func(incr_build_prop_minor_version,
                  'application/build.properties')
     replace_func(replace_config_engine_version,
                  'util/src/org/commcare/util/CommCareConfigEngine.java')
 
     review_and_commit_changes('master',
                               'Automated version bump')
+    util.chdir_base()
+
+
+# String -> None
+def update_commcare_hotfix_version_numbers(branch):
+    """
+    Update hotfix version in build.properties on hotfix branch
+    """
+    util.chdir_repo('commcare')
+    subprocess.call('git checkout {}'.format(branch), shell=True)
+
+    replace_func(incr_build_prop_hotfix_version,
+                 'application/build.properties')
+
+    review_and_commit_changes(branch,
+                              'Automated hotfix version bump')
     util.chdir_base()
 
 
@@ -114,7 +130,19 @@ def replace_func(func, file_name):
 
 
 # String -> String
-def replace_build_prop(file_contents):
+def incr_build_prop_minor_version(file_contents):
+    return replace_build_prop(file_contents,
+                              lambda v: v.get_next_minor_release())
+
+
+# String -> String
+def incr_build_prop_hotfix_version(file_contents):
+    return replace_build_prop(file_contents,
+                              lambda v: v.get_next_hotfix())
+
+
+# String [Version -> Version] -> String
+def replace_build_prop(file_contents, get_new_version):
     versionPattern = re.compile(r'app.version=(\d+).(\d+).(\d+)')
     result = versionPattern.search(file_contents)
     if result is None or len(result.groups()) != 3:
@@ -123,7 +151,7 @@ def replace_build_prop(file_contents):
     version_raw = list(map(int, result.groups()))
     version = Version(*version_raw)
 
-    next_minor = version.get_next_minor_release()
+    next_minor = get_new_version(version)
     print('commcare build.properties: replacing {} with {}'.format(version,
                                                                    next_minor))
     return file_contents.replace('app.version={}'.format(version),
@@ -294,7 +322,7 @@ def set_dev_tag_to_release(file_contents):
 def add_hotfix_version_to_odk(branch_name, hotfix_count):
     util.chdir_repo('commcare-odk')
 
-    print("adding hotfix version to commcare-odk branch {}".format(branch_name))
+    print("add hotfix version to commcare-odk branch {}".format(branch_name))
 
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
@@ -394,11 +422,45 @@ def get_last_hotfix(repo, version):
 # Version [List-of String] -> None
 def create_hotfix_branches(version, repos_to_hotfix):
     def get_branch_name(v): return "{}{}".format(BRANCH_BASE, v.short_string())
+
+    branch = get_branch_name(version)
     for repo in repos_to_hotfix:
-        branch = get_branch_name(version)
         print(("creating hotfix branch {} for " +
                "{} repo from latest tag").format(branch, repo))
         create_branch(repo, branch)
+
+    if "commcare" in repos_to_hotfix:
+        update_commcare_hotfix_version_numbers(branch)
+
+    update_odk_hotfix_version(branch)
+
+
+# String -> None
+def update_odk_hotfix_version(branch):
+    """
+    Update hotfix version in AndroidManifest and push hotfix branch.
+    """
+    util.chdir_repo('commcare-odk')
+    subprocess.call('git checkout {}'.format(branch), shell=True)
+
+    replace_func(update_manifest_hotfix_version, 'app/AndroidManifest.xml')
+
+    review_and_commit_changes(branch, 'Automated hotfix version bump')
+
+    util.chdir_base()
+
+
+# String -> String
+def update_manifest_hotfix_version(file_contents):
+    versionPattern = re.compile(r'android:versionName="(\d+).(\d+).(\d+)"')
+    result = versionPattern.search(file_contents)
+    if result is None or len(result.groups()) != 3:
+        raise
+    version_raw = list(map(int, result.groups()))
+    version = Version(*version_raw)
+    current_version = 'android:versionName="{}"'.format(version)
+    next_version = 'android:versionName="{}"'.format(version.get_next_hotfix())
+    return file_contents.replace(current_version, next_version)
 
 
 # None -> Version
