@@ -173,15 +173,13 @@ def set_build_numbers(new_version):
 
 # String Version Integer -> None
 def update_release_build_number(job_base, current_version, increment_by):
-    old_job = '{}-{}'.format(job_base,
-                             current_version.get_last_version_short())
-    current_build_number = j.get_job_info(old_job)['nextBuildNumber']
+    current_build_number = j.get_job_info(job_base)['nextBuildNumber']
 
     new_job = '{}-{}'.format(job_base, current_version.short_string())
 
     next_build_number = int(current_build_number) + increment_by
 
-    print('INFO:\t{} build #: {}'.format(old_job, current_build_number))
+    print('INFO:\t{} build #: {}'.format(job_base, current_build_number))
     print('\t\tsetting {} build # to {}'.format(new_job, next_build_number))
 
     create_next_build_number_file(next_build_number)
