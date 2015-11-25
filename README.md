@@ -3,7 +3,7 @@ The [CommCare mobile release process](https://confluence.dimagi.com/display/MD/C
 
 ## setup
 * Create a user on the jenkins master machine that is part of "jenkins" group:
-`useradd -m -g users -G jenkins,sudo -s /bin/zsh yolandi`
+`useradd -m -g users -G jenkins,sudo -s /bin/zsh yolandi` and `passwd yolandi`
 * Add your ssh public key to that machine so that you can login without typing your password. [First few steps here detail this](https://help.github.com/articles/generating-ssh-keys/). This is need to push files to that server via the deploy scripts you run locally.
 * Checkout the [mobile deploy repository](https://github.com/dimagi/mobile-deploy) and copy deploy.conf.template to deploy.conf and populate it the correct credentials.
 * `pip install -r requirements.txt`
