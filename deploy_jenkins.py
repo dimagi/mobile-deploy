@@ -218,13 +218,16 @@ def upload_next_build_number(job, next_build_number):
         scp_command = 'scp nextBuildNumber {}@{}:{}'.format(BUILD_SERVER_USER,
                                                             BUILD_SERVER,
                                                             build_path)
-        subprocess.call(scp_command, shell=True)
+        scp_successful = subprocess.call(scp_command, shell=True)
     except Exception:
         show_manual_next_build_message(job, next_build_number)
         return
 
-    # make jenkins read the build number change from memory
-    reload_job_into_jenkins_memory(job)
+    if scp_successful == 0:
+        # make jenkins read the build number change from memory
+        reload_job_into_jenkins_memory(job)
+    else:
+        show_manual_next_build_message(job, next_build_number)
 
 
 # String Integer -> None
