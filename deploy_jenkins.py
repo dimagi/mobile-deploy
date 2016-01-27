@@ -350,11 +350,10 @@ def build_release(version):
 
 
 # None -> Version
-def get_staged_release_version():
+def get_latest_release_job_version():
     """
     Reads the version number off of the commcare-mobile job, and use
-    it to find the latest release job commcare-mobile-X.XX, from
-    which the hotfix version can be loaded.
+    it to find the latest commcare-mobile-X.XX job.
     """
     master_xml = j.get_job_config('commcare-mobile')
 
@@ -373,6 +372,25 @@ def get_staged_release_version():
     return Version(*map(int, current_version_raw))
 
 
+# None -> Version
+def get_current_release_version():
+    """
+    Finds latest released version by getting latest version whose job is
+    building off of tags. Fails if in the middle of a hotfix.
+    """
+    latest_release_job_ver = get_latest_release_job_version()
+    latest_short = latest_release_job_ver.short_string()
+    staged_release_job = 'commcare-mobile-{}'.format(latest_short)
+
+    # check if latest release job version is also the released version
+    release_xml = j.get_job_config(staged_release_job)
+    is_released = release_xml.find("refs/tags/") != -1
+    if is_released:
+        return latest_release_job_ver
+    else:
+        return latest_release_job_ver.get_last_version()
+
+
 # [List-of String] -> None
 def build_jobs_against_hotfix_branches(hotfix_repos):
     """
@@ -383,7 +401,7 @@ def build_jobs_against_hotfix_branches(hotfix_repos):
 
     def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
 
-    version = get_staged_release_version()
+    version = get_current_release_version()
 
     for repo in hotfix_repos:
         last_hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
@@ -407,7 +425,7 @@ def build_jobs_against_hotfix_tags(hotfix_repos):
 
     def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
 
-    version = get_staged_release_version()
+    version = get_current_release_version()
 
     for repo in hotfix_repos:
         last_hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)

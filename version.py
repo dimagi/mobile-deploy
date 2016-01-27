@@ -31,6 +31,9 @@ class Version:
         else:
             return Version(self.major, self.minor - 1, 0).short_string()
 
+    def get_last_version(self):
+        return Version(self.major, self.minor - 1, 0)
+
 
 class VersionException(Exception):
     pass
