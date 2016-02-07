@@ -2,8 +2,8 @@
 
 import sys
 
-import deploy_jenkins
-import deploy_git
+import jenkins_utils
+import git_utils
 
 from update_translations import update_translations
 
@@ -19,8 +19,8 @@ def create_release():
     """
     Cuts release git branches from master and creates new jenkins release jobs.
     """
-    version = deploy_jenkins.create_new_release_jobs()
-    deploy_git.create_branches_and_update_versions(BRANCH_BASE, version)
+    version = jenkins_utils.create_new_release_jobs()
+    git_utils.create_branches_and_update_versions(BRANCH_BASE, version)
 
 
 def deploy_release():
@@ -28,12 +28,12 @@ def deploy_release():
     Creates minor release tags from release branch and updates jenkins jobs to
     build from that tag.
     """
-    version = deploy_jenkins.get_latest_release_job_version()
+    version = jenkins_utils.get_latest_release_job_version()
 
-    tag = deploy_git.create_release_tags(BRANCH_BASE, version)
+    tag = git_utils.create_release_tags(BRANCH_BASE, version)
     branch = '{}{}'.format(BRANCH_BASE, version.short_string())
-    deploy_jenkins.make_release_jobs_use_tags(branch, tag, version)
-    deploy_jenkins.build_release(version)
+    jenkins_utils.make_release_jobs_use_tags(branch, tag, version)
+    jenkins_utils.build_release(version)
     print("Run 'deploy finalize' builds are locked in")
 
 
@@ -42,11 +42,11 @@ def deploy_finalize():
     Increment the hotfix version on commcare-mobile-X.XX in prep for building
     hotfix, update translations, and removes local release branches.
     """
-    version = deploy_jenkins.get_latest_release_job_version()
+    version = jenkins_utils.get_latest_release_job_version()
     update_translations(version.short_string())
-    deploy_jenkins.inc_hotfix_version(version)
+    jenkins_utils.inc_hotfix_version(version)
     branch = '{}{}'.format(BRANCH_BASE, version.short_string())
-    deploy_git.close_branches(branch)
+    git_utils.close_branches(branch)
 
 
 def main():

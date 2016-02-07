@@ -6,7 +6,7 @@ import re
 import sys
 import utils as util
 
-import deploy_jenkins
+import jenkins_utils
 
 from version import Version
 from user_interaction import prompt_until_answer
@@ -465,7 +465,7 @@ def update_manifest_hotfix_version(file_contents):
 
 # None -> Version
 def get_current_hotfix_version_from_release_tags():
-    version = deploy_jenkins.get_current_release_version()
+    version = jenkins_utils.get_current_release_version()
     last_hotfix = -1
     for repo in ["commcare", "commcare-odk"]:
         last_hotfix = max(last_hotfix,

@@ -2,8 +2,8 @@
 
 import sys
 
-import deploy_jenkins
-import deploy_git
+import jenkins_utils
+import git_utils
 from utils import branch_exists, checkout_ref
 from user_interaction import verify_value_with_user, \
     prompt_user_with_validation
@@ -28,16 +28,16 @@ def create_hotfix():
     bumped to the latest odk hotfix.
     """
     # TODO: check for unstaged changes
-    ver = deploy_git.get_next_hotfix_version_from_release_tags()
+    ver = git_utils.get_next_hotfix_version_from_release_tags()
     verify_value_with_user("Creating {} hotfix. Is this correct?".format(ver),
                            "The script detected an incorrect hotfix version.")
 
     hotfix_repos = get_hotfix_repos_from_user()
 
-    deploy_git.checkout_latest_hotfix_tags(ver)
-    deploy_git.create_hotfix_branches(ver, hotfix_repos)
+    git_utils.checkout_latest_hotfix_tags(ver)
+    git_utils.create_hotfix_branches(ver, hotfix_repos)
 
-    deploy_jenkins.build_jobs_against_hotfix_branches(hotfix_repos)
+    jenkins_utils.build_jobs_against_hotfix_branches(hotfix_repos)
 
 
 # None -> [List-of String]
@@ -64,17 +64,17 @@ def deploy_hotfix():
     Create new release tags from open hotfix branches and make jenkins release
     jobs build off of them.
     """
-    version = deploy_git.get_next_hotfix_version_from_release_tags()
+    version = git_utils.get_next_hotfix_version_from_release_tags()
     hotfix_repos = get_hotfix_repos(version)
 
     verify_msg = "Hotfixing repos {}; correct?".format(", ".join(hotfix_repos))
     verify_value_with_user(verify_msg, True)
 
-    deploy_git.create_hotfix_tags(hotfix_repos, version)
-    deploy_jenkins.build_jobs_against_hotfix_tags(hotfix_repos)
+    git_utils.create_hotfix_tags(hotfix_repos, version)
+    jenkins_utils.build_jobs_against_hotfix_tags(hotfix_repos)
 
     if "commcare" in hotfix_repos:
-        deploy_jenkins.set_commcare_mobile_hotfix_version(version)
+        jenkins_utils.set_commcare_mobile_hotfix_version(version)
 
 
 # Version -> [List-of String]
@@ -93,14 +93,14 @@ def finalize_hotfix():
     Close any branches opened for hotfixing and bump the hotfix version on the
     commcare-mobile jenkins release build.
     """
-    version = deploy_git.get_current_hotfix_version_from_release_tags()
+    version = git_utils.get_current_hotfix_version_from_release_tags()
 
     hotfix_repos = get_hotfix_repos(version)
 
-    deploy_git.close_hotfix_branches()
+    git_utils.close_hotfix_branches()
 
     if "commcare" in hotfix_repos:
-        deploy_jenkins.inc_hotfix_version(version)
+        jenkins_utils.inc_hotfix_version(version)
     return
 
 
@@ -112,7 +112,7 @@ def resume_hotfix():
     """
     print("Checking out the hotfix branches and last release for other repos.")
     print("(assumes the release tag hasn't been created for current hotfix)")
-    version = deploy_git.get_next_hotfix_version_from_release_tags()
+    version = git_utils.get_next_hotfix_version_from_release_tags()
     hotfix_repos = get_hotfix_repos(version)
 
     if len(hotfix_repos) == 0:
@@ -125,7 +125,7 @@ def resume_hotfix():
         if repo in hotfix_repos:
             checkout_ref(repo, branch_name)
         else:
-            deploy_git.checkout_latest_hotfix_tag(version, repo)
+            git_utils.checkout_latest_hotfix_tag(version, repo)
 
 
 def main():
