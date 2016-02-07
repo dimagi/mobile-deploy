@@ -47,6 +47,7 @@ def main():
     subprocess.call('git clone {}'.format(target_repo.clone_url), shell=True)
     os.chdir(target_repo.name)
     subprocess.call('git checkout {}'.format(cross_branch), shell=True)
+    subprocess.call('git pull', shell=True)
     os.chdir('../')
 
 if __name__ == "__main__":
