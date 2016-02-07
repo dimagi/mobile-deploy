@@ -20,7 +20,7 @@ def getCrossBranch(target_repo, source_pr):
     """
     url = "{}/pull/(\d+)".format(target_repo.html_url)
     search_pattern = "[Cc]ross-?(request)?:?(\s?){}".format(url)
-    cross_request_search = re.search_pattern(search_pattern, source_pr.body)
+    cross_request_search = re.search(search_pattern, source_pr.body)
 
     if cross_request_search:
         pr_number = cross_request_search.group(3)
