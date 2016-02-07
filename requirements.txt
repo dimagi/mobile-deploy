@@ -1,1 +1,2 @@
+github3>=0.9.3
 python-jenkins>=0.4.12
