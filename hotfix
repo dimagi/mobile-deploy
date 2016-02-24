@@ -4,7 +4,8 @@ import sys
 
 import jenkins_utils
 import git_utils
-from utils import branch_exists, checkout_ref
+from utils import branch_exists, checkout_ref, unstaged_changes_present, \
+    branch_exists_in_repos
 from user_interaction import verify_value_with_user, \
     prompt_user_with_validation
 from deploy_config import REPOS, BRANCH_BASE
@@ -27,8 +28,8 @@ def create_hotfix():
     between repos. Whenever a new hotfix is created for a repo, its version is
     bumped to the latest odk hotfix.
     """
-    # TODO: check for unstaged changes
-    ver = git_utils.get_next_hotfix_version_from_release_tags()
+
+    ver = get_hotfix_version_verify_branch_state()
     verify_value_with_user("Creating {} hotfix. Is this correct?".format(ver),
                            "The script detected an incorrect hotfix version.")
 
@@ -38,6 +39,25 @@ def create_hotfix():
     git_utils.create_hotfix_branches(ver, hotfix_repos)
 
     jenkins_utils.build_jobs_against_hotfix_branches(hotfix_repos)
+
+
+# None -> Version
+def get_hotfix_version_verify_branch_state():
+    """
+    Get hotfix version from git release tags and make sure there are unstaged
+    local changes and the hotfix branch doesn't exist already.
+    """
+    if unstaged_changes_present(REPOS):
+        raise Exception("one of the repos has unstaged changes, " +
+                        "please stash and try again")
+
+    ver = git_utils.get_next_hotfix_version_from_release_tags()
+
+    branch_name = "{}{}".format(BRANCH_BASE, ver.short_string())
+    if branch_exists_in_repos(branch_name, REPOS):
+        raise Exception("commcare_{} branch already exists".format(ver))
+
+    return ver
 
 
 # None -> [List-of String]

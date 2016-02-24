@@ -44,6 +44,7 @@ def main():
 
     src_pr = src_repo.pull_request(pr_number)
     cross_branch = getCrossBranch(target_repo, src_pr)
+    print("Checking out {} for {}".format(cross_branch, target_repo_name))
     subprocess.call('git clone {}'.format(target_repo.clone_url), shell=True)
     os.chdir(target_repo.name)
     subprocess.call('git checkout {}'.format(cross_branch), shell=True)
