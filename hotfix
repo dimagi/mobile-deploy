@@ -54,8 +54,13 @@ def get_hotfix_version_verify_branch_state():
     ver = git_utils.get_next_hotfix_version_from_release_tags()
 
     branch_name = "{}{}".format(BRANCH_BASE, ver.short_string())
+
+    def build_error(message): message.format(ver.short_string())
+
+    if len(get_hotfix_repos(ver)) > 0:
+        raise Exception(build_error("commcare_{} branch exists locally"))
     if branch_exists_in_repos(branch_name, REPOS):
-        raise Exception("commcare_{} branch already exists".format(ver))
+        raise Exception(build_error("commcare_{} branch exists locally"))
 
     return ver
 
