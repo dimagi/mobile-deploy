@@ -43,6 +43,9 @@ def branch_exists_in_repos(branch_name, repos):
 
 # String String -> Boolean
 def branch_exists(child_directory, branch_name):
+    """
+    Check if branch exists on remote server. Doesn't check locally
+    """
     chdir_repo(child_directory)
     try:
         git_command = 'git ls-remote origin {}'.format(branch_name)

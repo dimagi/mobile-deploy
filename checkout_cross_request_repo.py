@@ -30,26 +30,43 @@ def getCrossBranch(target_repo, source_pr):
         return "master"
 
 
+def checkout_pr_branch(local_parent_dir, pr_number,
+                       source_repo_name, target_repo_name):
+    os.chdir(local_parent_dir)
+    src_repo = github3.repository('dimagi', source_repo_name)
+    target_repo = github3.repository('dimagi', target_repo_name)
+
+    src_pr = src_repo.pull_request(pr_number)
+    cross_branch = getCrossBranch(target_repo, src_pr)
+
+    if not os.path.exists(target_repo.name):
+        print("Checking out {} for {}".format(cross_branch, target_repo_name))
+        subprocess.call('git clone {}'.format(target_repo.clone_url),
+                        shell=True)
+
+    os.chdir(target_repo.name)
+    subprocess.call('git checkout {}'.format(cross_branch), shell=True)
+    subprocess.call('git pull', shell=True)
+    os.chdir(local_parent_dir)
+
+
 def main():
     if len(sys.argv) < 4:
-        print("Command arg format: [source repo] [PR number] [target repo]")
+        print("Command arg format: [source repo] [PR number]" +
+              " [target repo] [OPTIONAL root dir]")
         sys.exit()
 
     source_repo_name = sys.argv[1]
     pr_number = int(sys.argv[2])
     target_repo_name = sys.argv[3]
 
-    src_repo = github3.repository('dimagi', source_repo_name)
-    target_repo = github3.repository('dimagi', target_repo_name)
+    root_dir = "."
+    if len(sys.argv) == 5:
+        root_dir = sys.argv[4]
+    root_dir = os.path.abspath(root_dir)
 
-    src_pr = src_repo.pull_request(pr_number)
-    cross_branch = getCrossBranch(target_repo, src_pr)
-    print("Checking out {} for {}".format(cross_branch, target_repo_name))
-    subprocess.call('git clone {}'.format(target_repo.clone_url), shell=True)
-    os.chdir(target_repo.name)
-    subprocess.call('git checkout {}'.format(cross_branch), shell=True)
-    subprocess.call('git pull', shell=True)
-    os.chdir('../')
+    checkout_pr_branch(root_dir, pr_number, source_repo_name, target_repo_name)
+
 
 if __name__ == "__main__":
     main()
