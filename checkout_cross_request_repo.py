@@ -30,6 +30,7 @@ def getCrossBranch(target_repo, source_pr):
         return "master"
 
 
+# String Integer String String -> None
 def checkout_pr_branch(local_parent_dir, pr_number,
                        source_repo_name, target_repo_name):
     os.chdir(local_parent_dir)
@@ -37,6 +38,7 @@ def checkout_pr_branch(local_parent_dir, pr_number,
     target_repo = github3.repository('dimagi', target_repo_name)
 
     src_pr = src_repo.pull_request(pr_number)
+    checkout_branch(src_repo.name, src_pr.head.ref)
     cross_branch = getCrossBranch(target_repo, src_pr)
 
     if not os.path.exists(target_repo.name):
@@ -44,10 +46,16 @@ def checkout_pr_branch(local_parent_dir, pr_number,
         subprocess.call('git clone {}'.format(target_repo.clone_url),
                         shell=True)
 
-    os.chdir(target_repo.name)
-    subprocess.call('git checkout {}'.format(cross_branch), shell=True)
-    subprocess.call('git pull', shell=True)
+    checkout_branch(target_repo.name, cross_branch)
     os.chdir(local_parent_dir)
+
+
+# String String -> None
+def checkout_branch(repo_name, branch):
+    os.chdir(repo_name)
+    subprocess.call('git checkout {}'.format(branch), shell=True)
+    subprocess.call('git pull', shell=True)
+    os.chdir("../")
 
 
 def main():
