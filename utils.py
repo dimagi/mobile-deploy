@@ -78,7 +78,7 @@ def get_last_hotfix_number_in_repo(repo, version):
                                            filter_tag_cmd,
                                            filter_hotfix_number)
     result = subprocess.check_output(get_hotfix_cmd, shell=True)
-    hotfixes = list(map(int, filter(lambda x: x != b'',
+    hotfixes = list(map(int, filter(lambda x: x.isdigit(),
                                     result.split(b'\n'))))
     hotfixes.sort()
     chdir_base()
