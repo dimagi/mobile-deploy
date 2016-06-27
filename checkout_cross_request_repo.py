@@ -27,7 +27,7 @@ def get_cross_branch(target_repo, source_pr):
         branch_name = target_repo.pull_request(pr_number).head.ref
         return branch_name
     else:
-        return source_pr.base.label.ref
+        return source_pr.base.ref
 
 
 # String Integer String String -> None
