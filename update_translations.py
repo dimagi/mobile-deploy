@@ -114,7 +114,6 @@ def get_updated_translations(repo, relative_path, filename):
     hq translations file from the given file
     """
     util.chdir_repo(repo)
-    subprocess.call('git checkout master', shell=True)
     os.chdir(relative_path)
     with open(filename, 'r', encoding='utf-8') as f:
         return f.read().strip()
