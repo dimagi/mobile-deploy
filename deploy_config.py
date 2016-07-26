@@ -11,6 +11,6 @@ BUILD_SERVER = config.get('BuildServer', 'addr')
 
 BASE_DIR = config.get('Local', 'dimagi_projects_dir')
 
-REPOS = ['javarosa', 'commcare', 'commcare-odk']
+REPOS = ['commcare-core', 'commcare-android']
 
 BRANCH_BASE = "commcare_"

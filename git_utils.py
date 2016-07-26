@@ -55,7 +55,7 @@ def create_branch(repo, branch_name):
 # None -> None
 def update_version_numbers():
     update_commcare_version_numbers()
-    update_odk_version_numbers()
+    update_android_version_numbers()
 
 
 # None -> None
@@ -64,11 +64,9 @@ def update_commcare_version_numbers():
     Update version numbers in build.properties and CommCareConfigEngin on
     master.
     """
-    util.chdir_repo('commcare')
+    util.chdir_repo('commcare-core')
     subprocess.call('git checkout master', shell=True)
 
-    replace_func(incr_build_prop_minor_version,
-                 'application/build.properties')
     replace_func(replace_config_engine_version,
                  'util/src/org/commcare/util/CommCareConfigEngine.java')
 
@@ -82,7 +80,7 @@ def update_commcare_hotfix_version_numbers(branch):
     """
     Update hotfix version in build.properties on hotfix branch
     """
-    util.chdir_repo('commcare')
+    util.chdir_repo('commcare-core')
     subprocess.call('git checkout {}'.format(branch), shell=True)
 
     replace_func(incr_build_prop_hotfix_version,
@@ -177,11 +175,11 @@ def replace_config_engine_version(file_contents):
 
 
 # None -> None
-def update_odk_version_numbers():
+def update_android_version_numbers():
     """
     Update version numbers in AndroidManifest and push master.
     """
-    util.chdir_repo('commcare-odk')
+    util.chdir_repo('commcare-android')
     subprocess.call('git checkout master', shell=True)
 
     replace_func(update_manifest_version, 'app/AndroidManifest.xml')
@@ -252,7 +250,7 @@ def update_resource_string_version():
 
 # String -> None
 def mark_version_as_alpha(branch_name):
-    util.chdir_repo('commcare')
+    util.chdir_repo('commcare-core')
 
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
@@ -286,7 +284,7 @@ def create_release_tags(branch_base, version):
         raise Exception("{} branch doesn't exist".format(branch_name))
 
     mark_version_as_release(branch_name)
-    add_hotfix_version_to_odk(branch_name, 0)
+    add_hotfix_version_to_android(branch_name, 0)
     create_tags_for_repos(branch_name, tag_name)
 
     return tag_name
@@ -294,8 +292,8 @@ def create_release_tags(branch_base, version):
 
 # String -> None
 def mark_version_as_release(branch_name):
-    util.chdir_repo('commcare')
-    print("marking commcare {} branch for release".format(branch_name))
+    util.chdir_repo('commcare-core')
+    print("marking commcare-core {} branch for release".format(branch_name))
 
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
@@ -319,10 +317,10 @@ def set_dev_tag_to_release(file_contents):
 
 
 # String Integer -> None
-def add_hotfix_version_to_odk(branch_name, hotfix_count):
-    util.chdir_repo('commcare-odk')
+def add_hotfix_version_to_android(branch_name, hotfix_count):
+    util.chdir_repo('commcare-android')
 
-    print("add hotfix version to commcare-odk branch {}".format(branch_name))
+    print("add hotfix ver. to commcare-android branch {}".format(branch_name))
 
     subprocess.call('git checkout {}'.format(branch_name), shell=True)
     subprocess.call('git pull origin {}'.format(branch_name), shell=True)
@@ -429,18 +427,18 @@ def create_hotfix_branches(version, repos_to_hotfix):
                "{} repo from latest tag").format(branch, repo))
         create_branch(repo, branch)
 
-    if "commcare" in repos_to_hotfix:
+    if "commcare-core" in repos_to_hotfix:
         update_commcare_hotfix_version_numbers(branch)
 
-    update_odk_hotfix_version(branch)
+    update_android_hotfix_version(branch)
 
 
 # String -> None
-def update_odk_hotfix_version(branch):
+def update_android_hotfix_version(branch):
     """
     Update hotfix version in AndroidManifest and push hotfix branch.
     """
-    util.chdir_repo('commcare-odk')
+    util.chdir_repo('commcare-android')
     subprocess.call('git checkout {}'.format(branch), shell=True)
 
     replace_func(update_manifest_hotfix_version, 'app/AndroidManifest.xml')
@@ -467,7 +465,7 @@ def update_manifest_hotfix_version(file_contents):
 def get_current_hotfix_version_from_release_tags():
     version = jenkins_utils.get_current_release_version()
     last_hotfix = -1
-    for repo in ["commcare", "commcare-odk"]:
+    for repo in ["commcare-core", "commcare-android"]:
         last_hotfix = max(last_hotfix,
                           util.get_last_hotfix_number_in_repo(repo, version))
     return Version(version.major, version.minor, last_hotfix)

@@ -19,10 +19,9 @@ j = jenkins.Jenkins('http://jenkins.dimagi.com',
                     JENKINS_USER,
                     JENKINS_PASSWORD)
 
-job_roots = ['javarosa-core-library', 'commcare-mobile', 'commcare-odk']
-repo_to_jobs = {'javarosa': 'javarosa-core-library',
-                'commcare': 'commcare-mobile',
-                'commcare-odk': 'commcare-odk'}
+job_roots = ['commcare-core', 'commcare-android']
+repo_to_jobs = {'commcare-core': 'commcare-core',
+                'commcare-android': 'commcare-android'}
 
 
 # None -> String
@@ -48,8 +47,8 @@ def create_new_release_jobs():
         archive_old_release_job(job_root, version)
 
     set_build_numbers(version)
-    inc_minor_version('commcare-mobile')
-    inc_minor_version('commcare-mobile-{}'.format(version.short_string()))
+    inc_minor_version('commcare-core')
+    inc_minor_version('commcare-core-{}'.format(version.short_string()))
 
     return version.short_string()
 
@@ -57,10 +56,10 @@ def create_new_release_jobs():
 # None -> Version
 def get_next_release_version():
     """
-    Reads the version number off of the 'commcare-mobile' job, which should be
+    Reads the version number off of the 'commcare-core' job, which should be
     set to the next release.
     """
-    xml = j.get_job_config('commcare-mobile')
+    xml = j.get_job_config('commcare-core')
 
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
@@ -165,10 +164,10 @@ def set_build_numbers(new_version):
     Update next build number for new release jobs by 1 and master jobs by 2000.
     """
     print("updating build numbers on jenkins jobs")
-    update_release_build_number('commcare-mobile', new_version, 1)
-    update_release_build_number('commcare-odk', new_version, 1)
-    update_master_build_number('commcare-mobile', 2000)
-    update_master_build_number('commcare-odk', 2000)
+    update_release_build_number('commcare-core', new_version, 1)
+    update_release_build_number('commcare-android', new_version, 1)
+    update_master_build_number('commcare-core', 2000)
+    update_master_build_number('commcare-android', 2000)
 
 
 # String Version Integer -> None
@@ -279,10 +278,10 @@ def inc_minor_version(job_name):
 # String -> None
 def inc_hotfix_version(version):
     """
-    Bump the commcare-mobile VERSION build parameter of a release job by a
+    Bump the commcare-core VERSION build parameter of a release job by a
     hotfix version.
     """
-    job_name = "commcare-mobile-{}".format(version.short_string())
+    job_name = "commcare-core-{}".format(version.short_string())
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
@@ -343,7 +342,7 @@ def replace_job_git_reference(base_job_name, version, current_ref, new_ref):
 
 # Version String -> None
 def build_release(version):
-    j.build_job("javarosa-core-library-{}".format(version.short_string()))
+    j.build_job("commcare-core-{}".format(version.short_string()))
     print(("Release builds have been triggered. " +
            "When they finish (~10 minutes) name them {} " +
            "and mark 'keep this build forever'").format(version))
@@ -352,10 +351,10 @@ def build_release(version):
 # None -> Version
 def get_latest_release_job_version():
     """
-    Reads the version number off of the commcare-mobile job, and use
-    it to find the latest commcare-mobile-X.XX job.
+    Reads the version number off of the commcare-core job, and use
+    it to find the latest commcare-core-X.XX job.
     """
-    master_xml = j.get_job_config('commcare-mobile')
+    master_xml = j.get_job_config('commcare-core')
 
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     next_version_raw = versionPattern.search(master_xml).groups()
@@ -364,7 +363,7 @@ def get_latest_release_job_version():
     next_version = Version(*map(int, next_version_raw))
 
     last_version = next_version.get_last_version_short()
-    staged_release_job = 'commcare-mobile-{}'.format(last_version)
+    staged_release_job = 'commcare-core-{}'.format(last_version)
     release_xml = j.get_job_config(staged_release_job)
     current_version_raw = versionPattern.search(release_xml).groups()
     if len(current_version_raw) != 3:
@@ -380,7 +379,7 @@ def get_current_release_version():
     """
     latest_release_job_ver = get_latest_release_job_version()
     latest_short = latest_release_job_ver.short_string()
-    staged_release_job = 'commcare-mobile-{}'.format(latest_short)
+    staged_release_job = 'commcare-core-{}'.format(latest_short)
 
     # check if latest release job version is also the released version
     release_xml = j.get_job_config(staged_release_job)

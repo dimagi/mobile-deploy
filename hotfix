@@ -23,10 +23,10 @@ def create_hotfix():
     create hotfix branches for those repos and set jenkins release jobs to
     build off the newly created hotfix branches.
 
-    NOTE: Due to repo dependencies, every hotfix effects commcare-odk, but not
-    every hotfix effects other repos. Thus, the release tags may not match up
-    between repos. Whenever a new hotfix is created for a repo, its version is
-    bumped to the latest odk hotfix.
+    NOTE: Due to repo dependencies, every hotfix effects commcare-android, but
+    not every hotfix effects other repos. Thus, the release tags may not match
+    up between repos. Whenever a new hotfix is created for a repo, its version
+    is bumped to the latest android hotfix.
     """
 
     ver = get_hotfix_version_verify_branch_state()
@@ -98,7 +98,7 @@ def deploy_hotfix():
     git_utils.create_hotfix_tags(hotfix_repos, version)
     jenkins_utils.build_jobs_against_hotfix_tags(hotfix_repos)
 
-    if "commcare" in hotfix_repos:
+    if "commcare-core" in hotfix_repos:
         jenkins_utils.set_commcare_mobile_hotfix_version(version)
 
 
@@ -116,7 +116,7 @@ def get_hotfix_repos(version):
 def finalize_hotfix():
     """
     Close any branches opened for hotfixing and bump the hotfix version on the
-    commcare-mobile jenkins release build.
+    commcare-core jenkins release build.
     """
     version = git_utils.get_current_hotfix_version_from_release_tags()
 
@@ -124,7 +124,7 @@ def finalize_hotfix():
 
     git_utils.close_hotfix_branches()
 
-    if "commcare" in hotfix_repos:
+    if "commcare-core" in hotfix_repos:
         jenkins_utils.inc_hotfix_version(version)
     return
 
