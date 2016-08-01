@@ -26,7 +26,8 @@ def create_branches_and_update_versions(branch_base, version):
 
     create_release_branches(branch_name)
     update_version_numbers()
-    mark_version_as_alpha(branch_name)
+    # enable for J2ME build
+    # mark_version_as_alpha(branch_name)
 
 
 # String -> None

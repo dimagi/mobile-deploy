@@ -15,7 +15,7 @@ from deploy_config import JENKINS_USER, JENKINS_PASSWORD,\
 MOBILE_VIEW_NAME = "CommCare Mobile"
 ARCHIVED_MOBILE_VIEW_NAME = "CommCare Mobile Archive"
 
-j = jenkins.Jenkins('http://jenkins.dimagi.com',
+j = jenkins.Jenkins('https://jenkins.dimagi.com',
                     JENKINS_USER,
                     JENKINS_PASSWORD)
 
@@ -232,7 +232,7 @@ def upload_next_build_number(job, next_build_number):
 # String Integer -> None
 def show_manual_next_build_message(job_name, next_build_number):
     print('Failed setting nextBuildNumber for {}'.format(job_name))
-    next_build_url = ("http://jenkins.dimagi.com/" +
+    next_build_url = ("https://jenkins.dimagi.com/" +
                       "job/{}/nextbuildnumber/").format(job_name)
     print(("Please manually set {}'s nextBuildNumber " +
            "to {} at \n {}").format(job_name, next_build_number,
