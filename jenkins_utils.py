@@ -277,11 +277,17 @@ def inc_minor_version(job_name):
 
 # String -> None
 def inc_hotfix_version(version):
+    inc_hotfix_version_on_job("commcare-android", version)
+    inc_hotfix_version_on_job("commcare-core", version)
+
+
+# String String -> None
+def inc_hotfix_version_on_job(base_job_name, version):
     """
     Bump the commcare-android VERSION build parameter of a release job by a
     hotfix version.
     """
-    job_name = "commcare-android-{}".format(version.short_string())
+    job_name = "{}-{}".format(base_job_name, version.short_string())
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
