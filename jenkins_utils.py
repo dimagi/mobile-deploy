@@ -278,10 +278,10 @@ def inc_minor_version(job_name):
 # String -> None
 def inc_hotfix_version(version):
     """
-    Bump the commcare-core VERSION build parameter of a release job by a
+    Bump the commcare-android VERSION build parameter of a release job by a
     hotfix version.
     """
-    job_name = "commcare-core-{}".format(version.short_string())
+    job_name = "commcare-android-{}".format(version.short_string())
     xml = j.get_job_config(job_name)
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
@@ -354,7 +354,7 @@ def get_latest_release_job_version():
     Reads the version number off of the commcare-core job, and use
     it to find the latest commcare-core-X.XX job.
     """
-    master_xml = j.get_job_config('commcare-core')
+    master_xml = j.get_job_config('commcare-android')
 
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     next_version_raw = versionPattern.search(master_xml).groups()
@@ -363,7 +363,7 @@ def get_latest_release_job_version():
     next_version = Version(*map(int, next_version_raw))
 
     last_version = next_version.get_last_version_short()
-    staged_release_job = 'commcare-core-{}'.format(last_version)
+    staged_release_job = 'commcare-android-{}'.format(last_version)
     release_xml = j.get_job_config(staged_release_job)
     current_version_raw = versionPattern.search(release_xml).groups()
     if len(current_version_raw) != 3:

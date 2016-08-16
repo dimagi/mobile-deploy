@@ -51,7 +51,7 @@ def get_hotfix_version_verify_branch_state():
         raise Exception("one of the repos has unstaged changes, " +
                         "please stash and try again")
 
-    ver = git_utils.get_next_hotfix_version_from_release_tags()
+    ver = jenkins_utils.get_latest_release_job_version().get_next_hotfix()
 
     branch_name = "{}{}".format(BRANCH_BASE, ver.short_string())
 
@@ -89,7 +89,7 @@ def deploy_hotfix():
     Create new release tags from open hotfix branches and make jenkins release
     jobs build off of them.
     """
-    version = git_utils.get_next_hotfix_version_from_release_tags()
+    version = jenkins_utils.get_latest_release_job_version().get_next_hotfix()
     hotfix_repos = get_hotfix_repos(version)
 
     verify_msg = "Hotfixing repos {}; correct?".format(", ".join(hotfix_repos))
@@ -118,15 +118,11 @@ def finalize_hotfix():
     Close any branches opened for hotfixing and bump the hotfix version on the
     commcare-core jenkins release build.
     """
-    version = git_utils.get_current_hotfix_version_from_release_tags()
-
-    hotfix_repos = get_hotfix_repos(version)
+    version = jenkins_utils.get_latest_release_job_version()
 
     git_utils.close_hotfix_branches()
 
-    if "commcare-core" in hotfix_repos:
-        jenkins_utils.inc_hotfix_version(version)
-    return
+    jenkins_utils.inc_hotfix_version(version)
 
 
 # None -> None
@@ -137,7 +133,7 @@ def resume_hotfix():
     """
     print("Checking out the hotfix branches and last release for other repos.")
     print("(assumes the release tag hasn't been created for current hotfix)")
-    version = git_utils.get_next_hotfix_version_from_release_tags()
+    version = jenkins_utils.get_latest_release_job_version().get_next_hotfix()
     hotfix_repos = get_hotfix_repos(version)
 
     if len(hotfix_repos) == 0:
