@@ -7,24 +7,36 @@ import re
 # name of the master hq translations file to be updated
 hq_translations_filename = 'messages_en-2.txt'
 
-# relative path to the subfolder within the commcare-android repo containing
-# the messages_ccodk_default.txt file
+# relative path to the subfolder within the javarosa repo containing the
+# messages_default.txt file
+javarosa_subfolder = './javarosa/j2me/shared-resources/resources'
+
+# relative path to the subfolder within the commcare repo containing the
+# messages_cc_default.txt file
+commcare_subfolder = './application/resources'
+
+# relative path to the subfolder within the commcare-odk repo containing the
+# messages_ccodk_default.txt file
 ccodk_messages_subfolder = './app/assets/locales'
 
-# relative path to the subfolder within the commcare-android repo containing
-# the strings.xml file
+# relative path to the subfolder within the commcare-odk repo containing the
+# strings.xml file
 ccodk_strings_subfolder = './app/res/values'
 
+j2me_repo = 'commcare-j2me'
+commcare_core_repo = 'commcare-core'
 commcare_android_repo = 'commcare-android'
 translations_repo = 'commcare-translations'
 
+javarosa_filename = 'messages_default.txt'
 commcare_filename = 'messages_cc_default.txt'
 ccodk_messages_filename = 'messages_ccodk_default.txt'
 ccodk_strings_filename = 'strings.xml'
 
-all_filenames = [commcare_filename, ccodk_messages_filename,
-                 ccodk_strings_filename]
-all_repos = [commcare_android_repo, translations_repo]
+all_filenames = [javarosa_filename, commcare_filename,
+                 ccodk_messages_filename, ccodk_strings_filename]
+all_repos = [j2me_repo, commcare_core_repo,
+             commcare_android_repo, translations_repo]
 
 namespace = '{http://strings_namespace}'
 github_url = 'https://github.com/dimagi/commcare-translations/compare/'
@@ -34,11 +46,18 @@ def update_translations(new_version_number):
     if util.unstaged_changes_present(all_repos):
         raise Exception("One of your repositories has un-staged changes, " +
                         "please stash them and try again")
+    new_javarosa_text = get_updated_translations(j2me_repo,
+                                                 javarosa_subfolder,
+                                                 javarosa_filename)
+    new_commcare_text = get_updated_translations(j2me_repo,
+                                                 commcare_subfolder,
+                                                 commcare_filename)
     new_ccodk_text = get_updated_translations(commcare_android_repo,
                                               ccodk_messages_subfolder,
                                               ccodk_messages_filename)
     new_strings_text = get_updated_strings_block()
-    new_text_blocks = [new_ccodk_text, new_strings_text]
+    new_text_blocks = [new_javarosa_text, new_commcare_text,
+                       new_ccodk_text, new_strings_text]
 
     new_branch_name = checkout_new_translations_branch(new_version_number)
     backup_old_translations_file()

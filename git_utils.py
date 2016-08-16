@@ -284,7 +284,8 @@ def create_release_tags(branch_base, version):
     if not util.branch_exists_in_repos(branch_name, REPOS):
         raise Exception("{} branch doesn't exist".format(branch_name))
 
-    mark_version_as_release(branch_name)
+    # TODO PLM: run this on J2ME releases:
+    # mark_version_as_release(branch_name)
     add_hotfix_version_to_android(branch_name, 0)
     create_tags_for_repos(branch_name, tag_name)
 
@@ -293,7 +294,7 @@ def create_release_tags(branch_base, version):
 
 # String -> None
 def mark_version_as_release(branch_name):
-    util.chdir_repo('commcare-core')
+    util.chdir_repo('commcare-j2me')
     print("marking commcare-core {} branch for release".format(branch_name))
 
     subprocess.call('git checkout {}'.format(branch_name), shell=True)

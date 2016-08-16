@@ -39,7 +39,7 @@ def deploy_release():
 
 def deploy_finalize():
     """
-    Increment the hotfix version on commcare-mobile-X.XX in prep for building
+    Increment the hotfix version on commcare-android-X.XX in prep for building
     hotfix, update translations, and removes local release branches.
     """
     version = jenkins_utils.get_latest_release_job_version()
