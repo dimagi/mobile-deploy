@@ -313,35 +313,43 @@ def update_job_with_hotfix(current_version):
 # String String Version -> None
 def make_release_jobs_use_tags(branch, tag, version):
     for job_root in job_roots:
-        make_release_job_use_tag(job_root, version, branch, tag)
+        make_release_job_use_tag(job_root, version, branch, tag,
+                                 job_root == "commcare-android")
 
 
-# String String String String -> None
-def make_release_job_use_tag(base_job_name, version_str, branch, tag):
+# String String String String Boolean -> None
+def make_release_job_use_tag(base_job_name, version_str, branch, tag,
+                             update_core_ref):
     full_branch = "refs/heads/{}".format(branch)
     full_tag = "refs/tags/{}".format(tag)
 
-    # commcare-android-X.XX uses CCCORE_BRANCH to checkout the proper
-    # commcare-core branch
-    full_core_branch = "CCCORE_BRANCH={}".format(branch)
-    full_core_tag = "CCCORE_BRANCH={}".format(tag)
-    replacement_map = [(full_branch, full_tag),
-                       (full_core_branch, full_core_tag)]
+    replacement_map = [(full_branch, full_tag)]
+
+    if update_core_ref:
+        # commcare-android-X.XX uses CCCORE_BRANCH to checkout the proper
+        # commcare-core branch
+        full_core_branch = "CCCORE_BRANCH={}".format(branch)
+        full_core_tag = "CCCORE_BRANCH={}".format(tag)
+        replacement_map.append((full_core_branch, full_core_tag))
+
     replace_references_in_job(base_job_name, version_str,
                               replacement_map)
 
 
-# String String String String -> None
-def make_release_job_use_branch(base_job_name, version_str, tag, branch):
+# String String String String Boolean -> None
+def make_release_job_use_branch(base_job_name, version_str, tag, branch,
+                                update_core_ref):
     full_tag = "refs/tags/{}".format(tag)
     full_branch = "refs/heads/{}".format(branch)
 
-    # commcare-android-X.XX uses CCCORE_BRANCH to checkout the proper
-    # commcare-core branch
-    full_core_tag = "CCCORE_BRANCH={}".format(tag)
-    full_core_branch = "CCCORE_BRANCH={}".format(branch)
-    replacement_map = [(full_tag, full_branch),
-                       (full_core_tag, full_core_branch)]
+    replacement_map = [(full_tag, full_branch)]
+
+    if update_core_ref:
+        # commcare-android-X.XX uses CCCORE_BRANCH to checkout the proper
+        # commcare-core branch
+        full_core_tag = "CCCORE_BRANCH={}".format(tag)
+        full_core_branch = "CCCORE_BRANCH={}".format(branch)
+        replacement_map.append((full_core_tag, full_core_branch))
 
     print(("changing jenkins job {} to build with following update" +
            "{}").format(base_job_name, replacement_map))
@@ -413,8 +421,10 @@ def build_jobs_against_hotfix_branches(hotfix_repos):
         tag = get_tag_name(hotfix_version)
         job_name = repo_to_jobs[repo]
         branch = get_branch_name(version)
+        update_core_ref = (repo == "commcare-android" and
+                           "commcare-core" in hotfix_repos)
         make_release_job_use_branch(job_name, version.short_string(),
-                                    tag, branch)
+                                    tag, branch, update_core_ref)
 
 
 # [List-of String] -> None
@@ -436,7 +446,10 @@ def build_jobs_against_hotfix_tags(hotfix_repos):
         tag = get_tag_name(hotfix_version)
         job_name = repo_to_jobs[repo]
         branch = get_branch_name(version)
-        make_release_job_use_tag(job_name, version.short_string(), branch, tag)
+        update_core_ref = (repo == "commcare-android" and
+                           "commcare-core" in hotfix_repos)
+        make_release_job_use_tag(job_name, version.short_string(), branch, tag,
+                                 update_core_ref)
 
 
 def get_branch_name(v):
