@@ -316,8 +316,8 @@ def make_release_jobs_use_tags(branch, tag, version):
         make_release_job_use_tag(job_root, version, branch, tag)
 
 
-# String Version String String -> None
-def make_release_job_use_tag(base_job_name, version, branch, tag):
+# String String String String -> None
+def make_release_job_use_tag(base_job_name, version_str, branch, tag):
     full_branch = "refs/heads/{}".format(branch)
     full_tag = "refs/tags/{}".format(tag)
 
@@ -327,12 +327,12 @@ def make_release_job_use_tag(base_job_name, version, branch, tag):
     full_core_tag = "CCCORE_BRANCH={}".format(tag)
     replacement_map = [(full_branch, full_tag),
                        (full_core_branch, full_core_tag)]
-    replace_references_in_job(base_job_name, version,
+    replace_references_in_job(base_job_name, version_str,
                               replacement_map)
 
 
-# String String String Version -> None
-def make_release_job_use_branch(base_job_name, version, tag, branch):
+# String String String String -> None
+def make_release_job_use_branch(base_job_name, version_str, tag, branch):
     full_tag = "refs/tags/{}".format(tag)
     full_branch = "refs/heads/{}".format(branch)
 
@@ -346,13 +346,13 @@ def make_release_job_use_branch(base_job_name, version, tag, branch):
     print(("changing jenkins job {} to build with following update" +
            "{}").format(base_job_name, replacement_map))
 
-    replace_references_in_job(base_job_name, version,
+    replace_references_in_job(base_job_name, version_str,
                               replacement_map)
 
 
-# String Version [List-of (String, String)] -> None
-def replace_references_in_job(base_job_name, version, replacement_map):
-    job_name = '{}-{}'.format(base_job_name, version.short_string())
+# String String [List-of (String, String)] -> None
+def replace_references_in_job(base_job_name, version_str, replacement_map):
+    job_name = '{}-{}'.format(base_job_name, version_str)
 
     print("updating {} to build with: {}".format(job_name, replacement_map))
 
@@ -394,46 +394,26 @@ def get_latest_release_job_version():
     return Version(*map(int, current_version_raw))
 
 
-# None -> Version
-def get_current_release_version():
-    """
-    Finds latest released version by getting latest version whose job is
-    building off of tags. Fails if in the middle of a hotfix.
-    """
-    latest_release_job_ver = get_latest_release_job_version()
-    latest_short = latest_release_job_ver.short_string()
-    staged_release_job = 'commcare-core-{}'.format(latest_short)
-
-    # check if latest release job version is also the released version
-    release_xml = j.get_job_config(staged_release_job)
-    is_released = release_xml.find("refs/tags/") != -1
-    if is_released:
-        return latest_release_job_ver
-    else:
-        return latest_release_job_ver.get_last_version()
-
-
 # [List-of String] -> None
 def build_jobs_against_hotfix_branches(hotfix_repos):
     """
     Make release jobs for hotfix repos build off of the newly opened hotfix
     branches.
     """
-    def get_branch_name(v): return "{}{}".format(BRANCH_BASE, v.short_string())
-
-    def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
-
-    version = get_current_release_version()
+    # NOTE PLM: not sure if the hotfix version is correct, but it is okay
+    # because it isn't used here
+    version = get_latest_release_job_version()
+    version_short = version.short_string()
 
     for repo in hotfix_repos:
-        last_hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
+        last_hotfix = util.get_last_hotfix_number_in_repo(repo, version_short)
         hotfix_version = Version(version.major,
                                  version.minor,
-                                 last_hotfix_number)
+                                 last_hotfix)
         tag = get_tag_name(hotfix_version)
         job_name = repo_to_jobs[repo]
         branch = get_branch_name(version)
-        make_release_job_use_branch(job_name, version,
+        make_release_job_use_branch(job_name, version.short_string(),
                                     tag, branch)
 
 
@@ -443,21 +423,25 @@ def build_jobs_against_hotfix_tags(hotfix_repos):
     Make release jobs for hotfix repos build off of the newly created hotfix
     tags.
     """
-    def get_branch_name(v): return "{}{}".format(BRANCH_BASE, v.short_string())
-
-    def get_tag_name(v): return "{}{}".format(BRANCH_BASE, v)
-
-    version = get_current_release_version()
+    # NOTE PLM: not sure if the hotfix version is correct, but it is okay
+    # because it isn't used here
+    version = get_latest_release_job_version()
+    version_short = version.short_string()
 
     for repo in hotfix_repos:
-        last_hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
+        last_hotfix = util.get_last_hotfix_number_in_repo(repo, version_short)
         hotfix_version = Version(version.major,
                                  version.minor,
-                                 last_hotfix_number)
+                                 last_hotfix)
         tag = get_tag_name(hotfix_version)
         job_name = repo_to_jobs[repo]
         branch = get_branch_name(version)
-        print("job " + job_name)
-        print(repo + " building off tag ")
-        print(tag)
-        make_release_job_use_tag(job_name, version, branch, tag)
+        make_release_job_use_tag(job_name, version.short_string(), branch, tag)
+
+
+def get_branch_name(v):
+    return "{}{}".format(BRANCH_BASE, v.short_string())
+
+
+def get_tag_name(v):
+    return "{}{}".format(BRANCH_BASE, v)

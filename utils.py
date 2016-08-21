@@ -63,8 +63,8 @@ def print_with_newlines(msg):
         print(line)
 
 
-# String Version -> Integer
-def get_last_hotfix_number_in_repo(repo, version):
+# String String -> Integer
+def get_last_hotfix_number_in_repo(repo, version_short_str):
     """
     Find the latest hotfix by looking at remote tag names
     """
@@ -72,7 +72,7 @@ def get_last_hotfix_number_in_repo(repo, version):
     filter_tag_cmd = "awk '{ print $2 }'"
     filter_hotfix_number = "awk -F'.' '{ print $3 }'"
 
-    tag = "{}{}".format(BRANCH_BASE, version.short_string())
+    tag = "{}{}".format(BRANCH_BASE, version_short_str)
     git_cmd = "git ls-remote origin 'refs/tags/{}.*'".format(tag)
     get_hotfix_cmd = "{} | {} | {}".format(git_cmd,
                                            filter_tag_cmd,

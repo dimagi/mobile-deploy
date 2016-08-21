@@ -415,7 +415,8 @@ def checkout_latest_hotfix_tag(version, repo):
 
 # String Version -> Version
 def get_last_hotfix(repo, version):
-    hotfix_number = util.get_last_hotfix_number_in_repo(repo, version)
+    hotfix_number = util.get_last_hotfix_number_in_repo(repo,
+                                                        version.short_string())
     return Version(version.major, version.minor, hotfix_number)
 
 
@@ -432,7 +433,6 @@ def create_hotfix_branches(version, repos_to_hotfix):
     # NOTE: needed for J2ME builds
     # if "commcare-core" in repos_to_hotfix:
     #   update_commcare_hotfix_version_numbers(branch)
-
 
     update_android_hotfix_version(branch)
 
@@ -467,12 +467,13 @@ def update_manifest_hotfix_version(file_contents):
 
 # None -> Version
 def get_current_hotfix_version_from_release_tags():
-    version = jenkins_utils.get_current_release_version()
+    v = jenkins_utils.get_current_release_version()
     last_hotfix = -1
     for repo in ["commcare-core", "commcare-android"]:
-        last_hotfix = max(last_hotfix,
-                          util.get_last_hotfix_number_in_repo(repo, version))
-    return Version(version.major, version.minor, last_hotfix)
+        repo_hotfix = util.get_last_hotfix_number_in_repo(repo,
+                                                          v.short_string())
+        last_hotfix = max(last_hotfix, repo_hotfix)
+    return Version(v.major, v.minor, last_hotfix)
 
 
 # None -> Version
