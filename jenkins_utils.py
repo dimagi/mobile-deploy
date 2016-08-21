@@ -278,7 +278,6 @@ def inc_minor_version(job_name):
 # String -> None
 def inc_hotfix_version(version):
     inc_hotfix_version_on_job("commcare-android", version)
-    inc_hotfix_version_on_job("commcare-core", version)
 
 
 # String String -> None
@@ -321,7 +320,15 @@ def make_release_jobs_use_tags(branch, tag, version):
 def make_release_job_use_tag(base_job_name, version, branch, tag):
     full_branch = "refs/heads/{}".format(branch)
     full_tag = "refs/tags/{}".format(tag)
-    replace_job_git_reference(base_job_name, version, full_branch, full_tag)
+
+    # commcare-android-X.XX uses CCCORE_BRANCH to checkout the proper
+    # commcare-core branch
+    full_core_branch = "CCCORE_BRANCH={}".format(branch)
+    full_core_tag = "CCCORE_BRANCH={}".format(tag)
+    replacement_map = [(full_branch, full_tag),
+                       (full_core_branch, full_core_tag)]
+    replace_references_in_job(base_job_name, version,
+                              replacement_map)
 
 
 # String String String Version -> None
@@ -329,19 +336,29 @@ def make_release_job_use_branch(base_job_name, version, tag, branch):
     full_tag = "refs/tags/{}".format(tag)
     full_branch = "refs/heads/{}".format(branch)
 
-    print(("changing jenkins job {} to build against " +
-           "{} instead of {}").format(base_job_name, full_branch, full_tag))
+    # commcare-android-X.XX uses CCCORE_BRANCH to checkout the proper
+    # commcare-core branch
+    full_core_tag = "CCCORE_BRANCH={}".format(tag)
+    full_core_branch = "CCCORE_BRANCH={}".format(branch)
+    replacement_map = [(full_tag, full_branch),
+                       (full_core_tag, full_core_branch)]
 
-    replace_job_git_reference(base_job_name, version, full_tag, full_branch)
+    print(("changing jenkins job {} to build with following update" +
+           "{}").format(base_job_name, replacement_map))
+
+    replace_references_in_job(base_job_name, version,
+                              replacement_map)
 
 
-def replace_job_git_reference(base_job_name, version, current_ref, new_ref):
+# String Version [List-of (String, String)] -> None
+def replace_references_in_job(base_job_name, version, replacement_map):
     job_name = '{}-{}'.format(base_job_name, version.short_string())
 
-    print("update {} to build off {}".format(job_name, new_ref))
+    print("updating {} to build with: {}".format(job_name, replacement_map))
 
     xml = j.get_job_config(job_name)
-    xml = xml.replace(current_ref, new_ref)
+    for current_ref, new_ref in replacement_map:
+        xml = xml.replace(current_ref, new_ref)
 
     j.reconfig_job(job_name, xml)
 
@@ -357,8 +374,8 @@ def build_release(version):
 # None -> Version
 def get_latest_release_job_version():
     """
-    Reads the version number off of the commcare-core job, and use
-    it to find the latest commcare-core-X.XX job.
+    Reads the version number off of the commcare-android job, and use it to
+    find the hotfix version in the latest commcare-android-X.XX job.
     """
     master_xml = j.get_job_config('commcare-android')
 

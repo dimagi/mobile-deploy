@@ -429,8 +429,10 @@ def create_hotfix_branches(version, repos_to_hotfix):
                "{} repo from latest tag").format(branch, repo))
         create_branch(repo, branch)
 
-    if "commcare-core" in repos_to_hotfix:
-        update_commcare_hotfix_version_numbers(branch)
+    # NOTE: needed for J2ME builds
+    # if "commcare-core" in repos_to_hotfix:
+    #   update_commcare_hotfix_version_numbers(branch)
+
 
     update_android_hotfix_version(branch)
 
