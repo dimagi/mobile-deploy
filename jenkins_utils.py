@@ -47,8 +47,8 @@ def create_new_release_jobs():
         archive_old_release_job(job_root, version)
 
     set_build_numbers(version)
-    inc_minor_version('commcare-core')
-    inc_minor_version('commcare-core-{}'.format(version.short_string()))
+    inc_minor_version('commcare-android')
+    inc_minor_version('commcare-android-{}'.format(version.short_string()))
 
     return version.short_string()
 
