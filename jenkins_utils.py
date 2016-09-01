@@ -59,7 +59,7 @@ def get_next_release_version():
     Reads the version number off of the 'commcare-core' job, which should be
     set to the next release.
     """
-    xml = j.get_job_config('commcare-core')
+    xml = j.get_job_config('commcare-android')
 
     versionPattern = re.compile(r'VERSION=(\d+).(\d+).(\d+)')
     current_version_raw = versionPattern.search(xml).groups()
