@@ -77,7 +77,8 @@ def assert_jobs_dont_exist(version):
 
 
 # String String Version -> None
-def create_new_release_job(base_job_name, last_release, new_release_version):
+def create_new_release_job(base_job_name, last_release, new_release_version,
+                           update_core_ref):
     last_release_job_name = '{}-{}'.format(base_job_name, last_release)
     xml = j.get_job_config(last_release_job_name)
 
@@ -89,11 +90,15 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
 
     xml = replace_references_to_old_jobs(xml, last_release, new_version)
 
-    old_tag_name = get_old_git_tag(xml)
+    old_version = get_old_tag_version(xml)
+    old_tag_name = 'refs/tags/commcare_{}'.format(old_version)
     new_ref_name = 'refs/heads/commcare_{}'.format(new_version)
     print("Replacing git tag from {} to {}".format(old_tag_name, new_ref_name))
 
     xml = xml.replace(old_tag_name, new_ref_name)
+
+    xml = xml.replace("CCCORE_BRANCH=commcare_{}".format(old_version),
+                      "CCCORE_BRANCH=commcare_{}".format(new_version))
 
     j.create_job(new_release_job_name, xml)
     print("Adding {} job to {} view".format(new_release_job_name,
@@ -108,7 +113,7 @@ def replace_references_to_old_jobs(xml, last_release, new_version):
     return xml
 
 
-def get_old_git_tag(xml):
+def get_old_tag_version(xml):
     versionPattern = re.compile(r'refs/tags/commcare_(\d+).(\d+).(\d+)')
     branch_version_numbers = versionPattern.search(xml).groups()
 
@@ -116,7 +121,7 @@ def get_old_git_tag(xml):
         raise Exception("couldn't find git branch reference of format " +
                         "refs/tags/commcare_X.X.X")
 
-    return 'refs/tags/commcare_{}.{}.{}'.format(*branch_version_numbers)
+    return '{}.{}.{}'.format(*branch_version_numbers)
 
 
 # String Version -> None
