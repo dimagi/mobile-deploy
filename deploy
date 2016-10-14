@@ -6,6 +6,7 @@ import jenkins_utils
 import git_utils
 
 from update_translations import update_translations
+from utils import assert_packages
 
 from deploy_config import BRANCH_BASE
 
@@ -50,6 +51,8 @@ def deploy_finalize():
 
 
 def main():
+    assert_packages()
+
     if len(sys.argv) > 2:
         filename = sys.argv[0]
         arg_count = len(sys.argv) - 1

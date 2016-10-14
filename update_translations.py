@@ -46,18 +46,21 @@ def update_translations(new_version_number):
     if util.unstaged_changes_present(all_repos):
         raise Exception("One of your repositories has un-staged changes, " +
                         "please stash them and try again")
-    new_javarosa_text = get_updated_translations(j2me_repo,
-                                                 javarosa_subfolder,
-                                                 javarosa_filename)
-    new_commcare_text = get_updated_translations(j2me_repo,
-                                                 commcare_subfolder,
-                                                 commcare_filename)
+    # TODO PLM: run this on J2ME releases:
+    # new_javarosa_text = get_updated_translations(j2me_repo,
+    #                                              javarosa_subfolder,
+    #                                              javarosa_filename)
+    # new_commcare_text = get_updated_translations(j2me_repo,
+    #                                              commcare_subfolder,
+    #                                              commcare_filename)
     new_ccodk_text = get_updated_translations(commcare_android_repo,
                                               ccodk_messages_subfolder,
                                               ccodk_messages_filename)
     new_strings_text = get_updated_strings_block()
-    new_text_blocks = [new_javarosa_text, new_commcare_text,
-                       new_ccodk_text, new_strings_text]
+    new_text_blocks = [
+        new_ccodk_text, new_strings_text,
+        # new_javarosa_text, new_commcare_text,
+    ]
 
     new_branch_name = checkout_new_translations_branch(new_version_number)
     backup_old_translations_file()
