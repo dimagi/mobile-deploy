@@ -1,6 +1,9 @@
 import subprocess
 import os
 from deploy_config import BASE_DIR, BRANCH_BASE
+import pkg_resources
+from pkg_resources import VersionConflict
+import sys
 
 
 # None -> None
@@ -93,3 +96,18 @@ def checkout_ref(repo, ref):
     subprocess.call('git pull --tags', shell=True)
     subprocess.call('git checkout {}'.format(ref), shell=True)
     chdir_base()
+
+
+def assert_packages():
+    try:
+        pkg_resources.require(get_dependencies())
+    except VersionConflict as e:
+        print("Missing a library requirement, please update:")
+        print(str(e))
+        sys.exit(0)
+
+
+# None -> [List-of String]
+def get_dependencies():
+    with open("requirements.txt", 'r') as f:
+        return f.read().split("\n")

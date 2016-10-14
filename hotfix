@@ -5,7 +5,7 @@ import sys
 import jenkins_utils
 import git_utils
 from utils import branch_exists, checkout_ref, unstaged_changes_present, \
-    branch_exists_in_repos
+    branch_exists_in_repos, assert_packages
 from user_interaction import verify_value_with_user, \
     prompt_user_with_validation
 from deploy_config import REPOS, BRANCH_BASE
@@ -150,6 +150,8 @@ def resume_hotfix():
 
 
 def main():
+    assert_packages()
+
     if len(sys.argv) > 2:
         filename = sys.argv[0]
         arg_count = len(sys.argv) - 1
