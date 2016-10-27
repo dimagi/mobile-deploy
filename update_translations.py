@@ -33,9 +33,8 @@ commcare_filename = 'messages_cc_default.txt'
 ccodk_messages_filename = 'android_translatable_strings.txt'
 ccodk_strings_filename = 'strings.xml'
 
-#all_filenames = [javarosa_filename, commcare_filename,
- #                ccodk_messages_filename, ccodk_strings_filename]
-all_filenames = [ccodk_messages_filename, ccodk_strings_filename]
+all_filenames = [javarosa_filename, commcare_filename,
+                 ccodk_messages_filename, ccodk_strings_filename]
 all_repos = [j2me_repo, commcare_core_repo,
              commcare_android_repo, translations_repo]
 
