@@ -36,7 +36,7 @@ ccodk_strings_filename = 'strings.xml'
 #all_filenames = [javarosa_filename, commcare_filename,
  #                ccodk_messages_filename, ccodk_strings_filename]
 all_filenames = [ccodk_messages_filename, ccodk_strings_filename]
-all_repos = [j2me_repo, commcare_core_repo,
+all_repos = [commcare_core_repo,
              commcare_android_repo, translations_repo]
 
 namespace = '{http://strings_namespace}'
