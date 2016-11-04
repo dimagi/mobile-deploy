@@ -318,7 +318,7 @@ def update_job_with_hotfix(current_version):
 # String String Version -> None
 def make_release_jobs_use_tags(branch, tag, version):
     for job_root in job_roots:
-        make_release_job_use_tag(job_root, version, branch, tag,
+        make_release_job_use_tag(job_root, version.short_string(), branch, tag,
                                  job_root == "commcare-android")
 
 
