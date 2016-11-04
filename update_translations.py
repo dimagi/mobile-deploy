@@ -30,7 +30,7 @@ translations_repo = 'commcare-translations'
 
 javarosa_filename = 'messages_default.txt'
 commcare_filename = 'messages_cc_default.txt'
-ccodk_messages_filename = 'messages_ccodk_default.txt'
+ccodk_messages_filename = 'android_translatable_strings.txt'
 ccodk_strings_filename = 'strings.xml'
 
 #all_filenames = [javarosa_filename, commcare_filename,
