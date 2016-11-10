@@ -53,6 +53,7 @@ def checkout_pr_branch(local_parent_dir, pr_number,
 # String String -> None
 def checkout_branch(repo_name, branch):
     os.chdir(repo_name)
+    subprocess.call('git fetch', shell=True)
     subprocess.call('git checkout {}'.format(branch), shell=True)
     subprocess.call('git pull', shell=True)
     os.chdir("../")
