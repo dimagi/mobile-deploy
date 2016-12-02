@@ -13,6 +13,7 @@ The [CommCare mobile release process](https://confluence.dimagi.com/display/MD/C
 `./deploy help` will give you argument descriptions. 
 
 The workflow:
+* Make sure that your local master branch for both repos does not have any unstaged changes.
 * `./deploy create`
 * Follow __Make new build available on HQ__ instructions on [release page](https://confluence.dimagi.com/display/MD/CommCare+Release+Process) 
 * Run QA
@@ -26,7 +27,6 @@ The workflow:
 `./hotfix help` will give you argument descriptions. 
 
 The workflow:
-* Make sure that your local master branch for both repos does not have any unstaged changes.
 * `./hotfix create`
 * perform hotfix dev work, merging into the branch created by the above command
 * `./hotfix release`
