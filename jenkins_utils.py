@@ -77,8 +77,7 @@ def assert_jobs_dont_exist(version):
 
 
 # String String Version -> None
-def create_new_release_job(base_job_name, last_release, new_release_version,
-                           update_core_ref):
+def create_new_release_job(base_job_name, last_release, new_release_version):
     last_release_job_name = '{}-{}'.format(base_job_name, last_release)
     xml = j.get_job_config(last_release_job_name)
 
