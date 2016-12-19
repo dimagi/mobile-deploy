@@ -98,9 +98,6 @@ def deploy_hotfix():
     git_utils.create_hotfix_tags(hotfix_repos, version)
     jenkins_utils.build_jobs_against_hotfix_tags(hotfix_repos)
 
-    if "commcare-core" in hotfix_repos:
-        jenkins_utils.set_commcare_mobile_hotfix_version(version)
-
 
 # Version -> [List-of String]
 def get_hotfix_repos(version):
