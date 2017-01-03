@@ -39,3 +39,19 @@ In case you need to do work on other branches while in the middle of a hotfix, y
 * the code that adds/removs jobs from jenkins views doesn't seem to be working
 * auto-compile release notes from PRs
 * would be nice to automatically name and lock in jenkins builds triggered by the deploy scripts
+
+## architecture overview
+Mobile deploy does 3 things:
+
+ * Manipulates git state using local repositories and manually calling git commands via a python shell interface.
+ * Creates new jenkins jobs and manipulates the state of existing jobs using the jenkins python plugin. Jenkins jobs are represented using an XML data structure, so job manipulations usually involve pulling existing XML and running search/replaces over them.
+ * Pushes files to the jenkins server via SSH in a order to set jenkins job build numbers
+
+One major complexity of the deploy system is version numbers. Since there is no central place that tracks the current CommCare release version, we pull the version from several different places.
+
+ * When we want to get the last hotfixed version, we do so by parsing the release git tags in the given repository, which should always be something like `commcare_2.23.0`.
+ * When we create a jenkins job for the next release, we pull the `VERSION` environment variable set in the `commcare-android` jenkins job, which is always set to the next unreleased CommCare version.
+
+Things to watch out for
+
+ * The scripts manipulate git tags using local versions of the code repositories. It is possible to mess things up if you are in the middle of running a part of the release and decide to checkout a branch or make changes to the code base. In the future it would be good to migrate the scripts to run on a server so that we don't have to worry about this issue.

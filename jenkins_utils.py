@@ -310,10 +310,6 @@ def inc_hotfix_version_on_job(base_job_name, version):
     j.reconfig_job(job_name, xml)
 
 
-def update_job_with_hotfix(current_version):
-    return
-
-
 # String String Version -> None
 def make_release_jobs_use_tags(branch, tag, version):
     for job_root in job_roots:
@@ -324,6 +320,9 @@ def make_release_jobs_use_tags(branch, tag, version):
 # String String String String Boolean -> None
 def make_release_job_use_tag(base_job_name, version_str, branch, tag,
                              update_core_ref):
+    """
+    Update release job to build off a tag instead of a dev branch.
+    """
     full_branch = "refs/heads/{}".format(branch)
     full_tag = "refs/tags/{}".format(tag)
 
@@ -343,6 +342,10 @@ def make_release_job_use_tag(base_job_name, version_str, branch, tag,
 # String String String String Boolean -> None
 def make_release_job_use_branch(base_job_name, version_str, tag, branch,
                                 update_core_ref):
+    """
+    Update release job to build off a dev branch instead of a release tag.
+    """
+
     full_tag = "refs/tags/{}".format(tag)
     full_branch = "refs/heads/{}".format(branch)
 
@@ -364,6 +367,10 @@ def make_release_job_use_branch(base_job_name, version_str, tag, branch,
 
 # String String [List-of (String, String)] -> None
 def replace_references_in_job(base_job_name, version_str, replacement_map):
+    """
+    Updates job such that each occurence of the provided mapping key is
+    replaced with the mapping value.
+    """
     job_name = '{}-{}'.format(base_job_name, version_str)
 
     print("updating {} to build with: {}".format(job_name, replacement_map))
