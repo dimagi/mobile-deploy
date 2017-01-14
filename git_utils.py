@@ -69,7 +69,7 @@ def update_commcare_version_numbers():
     subprocess.call('git checkout master', shell=True)
 
     replace_func(replace_config_engine_version,
-                 'util/src/org/commcare/util/engine/CommCareConfigEngine.java')
+                 'src/cli/java/org/commcare/util/engine/CommCareConfigEngine.java')
 
     review_and_commit_changes('master',
                               'Automated version bump')
