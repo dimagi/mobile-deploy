@@ -3,9 +3,11 @@ import os
 import xml.etree.ElementTree as ET
 import utils as util
 import re
+import sys
 
 # name of the master hq translations file to be updated
-hq_translations_filename = 'messages_en-2.txt'
+hq_translations_subdir = "historical-translations-by-version"
+unversioned_translations_filename = 'messages_en-2.txt'
 
 # relative path to the subfolder within the javarosa repo containing the
 # messages_default.txt file
@@ -64,9 +66,8 @@ def update_translations(new_version_number):
     ]
 
     new_branch_name = checkout_new_translations_branch(new_version_number)
-    backup_old_translations_file()
-    create_updated_translations_file(new_text_blocks)
-    commit_and_push_new_branch(new_version_number, new_branch_name)
+    new_file_name = create_updated_translations_file(new_text_blocks, new_version_number)
+    commit_and_push_new_branch(new_version_number, new_branch_name, new_file_name)
 
 
 def checkout_new_translations_branch(new_version_number):
@@ -78,19 +79,16 @@ def checkout_new_translations_branch(new_version_number):
     return new_branch_name
 
 
-def backup_old_translations_file():
-    os.rename(hq_translations_filename, hq_translations_filename + '.bak')
-
-
-def create_updated_translations_file(new_text_blocks):
+def create_updated_translations_file(new_text_blocks, new_version_number):
+    versioned_filename = '{}/{}-{}'.format(hq_translations_subdir,new_version_number, unversioned_translations_filename)
     """
     Write all of the updated text blocks from the 4 mobile translations files
-    to the master hq translations file, with headers for each section
+    to a new translations file for this version, with headers for each section
     """
     header_prefix = '# *** '
     header_suffix = ' ***'
-    with open(hq_translations_filename, 'w', encoding='utf-8') as f:
-        os.utime(hq_translations_filename, None)
+    with open(versioned_filename, 'w', encoding='utf-8') as f:
+        os.utime(versioned_filename, None)
         num_blocks = len(all_filenames)
         for i in range(num_blocks):
             f.write(header_prefix + all_filenames[i] + header_suffix + '\n\n')
@@ -98,9 +96,17 @@ def create_updated_translations_file(new_text_blocks):
             if i < num_blocks-1:
                 f.write('\n\n')
 
+    # Create a simlink so that the unversioned file is equivalent to the latest versioned one
+    os.remove(unversioned_translations_filename)
+    os.symlink(versioned_filename, unversioned_translations_filename)
 
-def commit_and_push_new_branch(new_version_number, new_branch):
-    subprocess.call('git add {}'.format(hq_translations_filename), shell=True)
+    return versioned_filename
+
+
+def commit_and_push_new_branch(new_version_number, new_branch, new_file_name):
+    subprocess.call('git add {}'.format(new_file_name), shell=True)
+    subprocess.call('git add {}'.format(unversioned_translations_filename), shell=True)
+
     commit_message = ('Auto-commit: Update translations for ' +
                       'CommCare release {}').format(new_version_number)
     subprocess.call("git commit -m '{}'".format(commit_message),
@@ -170,3 +176,22 @@ def unescape_quotes(text):
     text = re.sub(r'\\"', '"', text)
     text = re.sub(r"\\'", "'", text)
     return text
+
+
+# for running this script independently of the rest of the deploy scripts
+def main():
+    if len(sys.argv) > 2:
+        filename = sys.argv[0]
+        arg_count = len(sys.argv) - 1
+        print("{} only accepts one argument, {} provided".format(filename,
+                                                                 arg_count))
+        sys.exit(0)
+
+    version_string = sys.argv[1]
+
+    update_translations(version_string)
+
+
+if __name__ == "__main__":
+    main()
+
