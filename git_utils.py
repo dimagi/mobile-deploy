@@ -339,7 +339,7 @@ def set_hotfix_version_to_zero(file_contents):
     versionPattern = re.compile(r'android:versionName="(\d+).(\d+)"')
     result = versionPattern.search(file_contents)
     if result is None or len(result.groups()) != 2:
-        raise Exception('Expected AndroidManifest version number format _.__')
+        raise Exception('Expected AndroidManifest version number format _.__, got {!s}'.format(result))
     version = result.groups()
     major = int(version[0])
     minor = int(version[1])
