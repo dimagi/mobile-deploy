@@ -9,8 +9,7 @@ import utils as util
 
 from version import Version
 from user_interaction import verify_value_with_user
-from deploy_config import JENKINS_USER, JENKINS_PASSWORD,\
-    BUILD_SERVER_USER, BUILD_SERVER, BRANCH_BASE
+from deploy_config import JENKINS_USER, JENKINS_PASSWORD, BRANCH_BASE
 
 MOBILE_VIEW_NAME = "CommCare Mobile"
 ARCHIVED_MOBILE_VIEW_NAME = "CommCare Mobile Archive"
@@ -217,20 +216,10 @@ def create_next_build_number_file(next_build_number):
 # String Integer -> None
 def upload_next_build_number(job, next_build_number):
     try:
-        build_path = '/var/lib/jenkins/jobs/{}/nextBuildNumber'.format(job)
-        scp_command = 'scp nextBuildNumber {}@{}:{}'.format(BUILD_SERVER_USER,
-                                                            BUILD_SERVER,
-                                                            build_path)
-        scp_successful = subprocess.call(scp_command, shell=True)
+        j.set_next_build_number(job, next_build_number)
     except Exception:
         show_manual_next_build_message(job, next_build_number)
         return
-
-    if scp_successful == 0:
-        # make jenkins read the build number change from memory
-        reload_job_into_jenkins_memory(job)
-    else:
-        show_manual_next_build_message(job, next_build_number)
 
 
 # String Integer -> None
