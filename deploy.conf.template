@@ -3,8 +3,4 @@ dimagi_projects_dir:
 
 [Jenkins]
 user: 
-password: 
-
-[BuildServer]
-user: 
-addr: 162.242.212.212
+password:
