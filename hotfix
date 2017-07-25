@@ -92,7 +92,7 @@ def deploy_hotfix():
     version = jenkins_utils.get_latest_release_job_version()
     hotfix_repos = get_hotfix_repos(version)
 
-    verify_msg = "Hotfixing repos {}; correct?".format(", ".join(hotfix_repos))
+    verify_msg = "Releasing hotfix for repos {}; correct?".format(", ".join(hotfix_repos))
     verify_value_with_user(verify_msg, True)
 
     git_utils.create_hotfix_tags(hotfix_repos, version)
