@@ -159,13 +159,14 @@ def replace_build_prop(file_contents, get_new_version):
 
 # String -> String
 def replace_config_engine_version(file_contents):
-    versionPattern = re.compile(r'CommCarePlatform\((\d+), (\d+)\)')
-    result = versionPattern.search(file_contents)
-    if result is None or len(result.groups()) != 2:
+    majorVersionPattern = re.compile(r'MAJOR_VERSION = (\d+);')
+    minorVersionPattern = re.compile(r'MINOR_VERSION = (\d+);')
+    majorResult = majorVersionPattern.search(file_contents)
+    minorResult = minorVersionPattern.search(file_contents)
+    if minorResult is None or majorResult is None:
         raise Exception("Couldn't parse version in CommCareConfigEngine")
-    version_raw = result.groups()
-    major = int(version_raw[0])
-    minor = int(version_raw[1])
+    major = int(majorResult.groups()[0])
+    minor = int(minorResult.groups()[0])
 
     platform_pattern = 'CommCarePlatform({}, {})'.format(major, minor)
     new_platform = 'CommCarePlatform({}, {})'.format(major, minor + 1)
