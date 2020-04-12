@@ -95,14 +95,24 @@ def create_new_release_job(base_job_name, last_release, new_release_version):
 
     xml = xml.replace(old_tag_name, new_ref_name)
 
-    xml = xml.replace("CCCORE_BRANCH=commcare_{}".format(old_version),
-                      "CCCORE_BRANCH=commcare_{}".format(new_version))
+    xml = replace_cccore_branch(xml, last_release, new_version)
 
     j.create_job(new_release_job_name, xml)
     print("Adding {} job to {} view".format(new_release_job_name,
                                             MOBILE_VIEW_NAME))
     add_job_to_view(new_release_job_name, MOBILE_VIEW_NAME)
 
+def replace_cccore_branch(xml, last_release, new_version):
+    """
+    Reads the version number off of the 'commcare-core' job and then
+    replace CCCORE_BRANCH property to the new version
+    """
+    core_last_release_job_name = '{}-{}'.format('commcare-core', last_release)
+    core_job_xml = j.get_job_config(core_last_release_job_name)
+    version = get_old_tag_version(core_job_xml)
+    xml = xml.replace("CCCORE_BRANCH=commcare_{}".format(version),
+                      "CCCORE_BRANCH=commcare_{}".format(new_version))
+    return xml
 
 def replace_references_to_old_jobs(xml, last_release, new_version):
     for job_base in job_roots:
