@@ -93,7 +93,7 @@ def get_last_hotfix_number_in_repo(repo, version_short_str):
 def checkout_ref(repo, ref):
     print("checking out {} ref for {} repo".format(ref, repo))
     chdir_repo(repo)
-    subprocess.call('git pull --tags', shell=True)
+    subprocess.call('git fetch --tags -f', shell=True)
     subprocess.call('git checkout {}'.format(ref), shell=True)
     chdir_base()
 
