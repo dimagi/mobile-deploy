@@ -185,7 +185,6 @@ def update_android_version_numbers():
     subprocess.call('git checkout master', shell=True)
 
     replace_func(update_manifest_version, 'app/AndroidManifest.xml')
-    update_resource_string_version()
 
     review_and_commit_changes('master', 'Automated version bump')
 
@@ -204,51 +203,6 @@ def update_manifest_version(file_contents):
     current_version = 'android:versionName="{}.{}"'.format(major, minor)
     next_version = 'android:versionName="{}.{}"'.format(major, minor + 1)
     return file_contents.replace(current_version, next_version)
-
-
-# None -> None
-def update_resource_string_version():
-    """ Update version in strings.xml. requires special logic because the
-    version numbers are on different lines:
-    <integer-array name="commcare_version">
-        <item>2</item>
-        <item>22</item>
-    </integer-array>
-    """
-    file_name = 'app/res/values/strings.xml'
-    tmp_file_name = '{}.new'.format(file_name)
-    read_file = open(file_name, 'r', encoding='utf-8')
-    write_file = open(tmp_file_name, 'w', encoding='utf-8', newline='\n')
-
-    file_contents = ''
-
-    on_version_line = -1
-    for line in read_file.readlines():
-        if on_version_line == 1:
-            # minor version
-            versionPattern = re.compile(r'<item>(\d+)<')
-            result = versionPattern.search(line)
-            if result is None:
-                raise Exception("couldn't parse version")
-            version = int(result.groups()[0])
-            leading_whitespace = line.split('<')[0]
-            line = "{}<item>{}</item>\n".format(leading_whitespace,
-                                                version + 1)
-            on_version_line = -1
-        elif on_version_line == 0:
-            # major version
-            on_version_line = 1
-        if line.find("commcare_version") != -1:
-            on_version_line = 0
-        file_contents += line
-
-    read_file.close()
-
-    write_file.write(file_contents)
-    write_file.close()
-
-    os.rename(tmp_file_name, file_name)
-
 
 # String -> None
 def mark_version_as_alpha(branch_name):
