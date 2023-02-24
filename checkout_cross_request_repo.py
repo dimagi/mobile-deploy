@@ -32,10 +32,17 @@ def get_cross_branch(target_repo, source_pr):
 
 # String Integer String String -> None
 def checkout_pr_branch(local_parent_dir, pr_number,
-                       source_repo_name, target_repo_name):
+                       source_repo_name, target_repo_name, github_token):
     os.chdir(local_parent_dir)
-    src_repo = github3.repository('dimagi', source_repo_name)
-    target_repo = github3.repository('dimagi', target_repo_name)
+
+    github = github3
+
+    # Authenticate if a GitHub token is provided
+    if github_token:
+        github = github3.login(token = github_token)
+
+    src_repo = github.repository('dimagi', source_repo_name)
+    target_repo = github.repository('dimagi', target_repo_name)
 
     src_pr = src_repo.pull_request(pr_number)
     checkout_branch(src_repo.name, src_pr.head.ref)
@@ -62,7 +69,7 @@ def checkout_branch(repo_name, branch):
 def main():
     if len(sys.argv) < 4:
         print("Command arg format: [source repo] [PR number]" +
-              " [target repo] [OPTIONAL root dir]")
+              " [target repo] [OPTIONAL root dir] [OPTIONAL github token]")
         sys.exit()
 
     source_repo_name = sys.argv[1]
@@ -70,11 +77,15 @@ def main():
     target_repo_name = sys.argv[3]
 
     root_dir = "."
-    if len(sys.argv) == 5:
+    if len(sys.argv) >= 5:
         root_dir = sys.argv[4]
     root_dir = os.path.abspath(root_dir)
 
-    checkout_pr_branch(root_dir, pr_number, source_repo_name, target_repo_name)
+    github_token = ''
+    if len(sys.argv) == 6:
+        github_token = sys.argv[5]
+
+    checkout_pr_branch(root_dir, pr_number, source_repo_name, target_repo_name, github_token)
 
 
 if __name__ == "__main__":
