@@ -162,7 +162,7 @@ def remove_job_from_view(job_name, view_name):
     xml = j.get_view_config(view_name)
     tree = ET.fromstring(xml)
     jobs = tree.find('jobNames')
-    for job in jobs.getchildren():
+    for job in list(jobs):
         if job.text == job_name:
             jobs.remove(job)
             break
