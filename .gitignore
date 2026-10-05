@@ -1,3 +1,4 @@
 deploy.conf
 .ropeproject
 __pycache__
+.venv

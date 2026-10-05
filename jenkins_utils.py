@@ -122,14 +122,14 @@ def replace_references_to_old_jobs(xml, last_release, new_version):
 
 
 def get_old_tag_version(xml):
-    versionPattern = re.compile(r'refs/tags/commcare_(\d+).(\d+).(\d+)')
-    branch_version_numbers = versionPattern.search(xml).groups()
+    versionPattern = re.compile(r'refs/tags/commcare_(\d+)\.(\d+)\.(\d+)')
+    match = versionPattern.search(xml)
 
-    if len(branch_version_numbers) != 3:
-        raise Exception("couldn't find git branch reference of format " +
-                        "refs/tags/commcare_X.X.X")
+    if match is None:
+        raise Exception("couldn't find git tag reference of format " +
+                        "refs/tags/commcare_X.X.X in the job config")
 
-    return '{}.{}.{}'.format(*branch_version_numbers)
+    return '{}.{}.{}'.format(*match.groups())
 
 
 # String Version -> None

@@ -94,14 +94,13 @@ def update_commcare_hotfix_version_numbers(branch):
 
 # String String -> None
 def review_and_commit_changes(branch, commit_msg):
-    diff = subprocess.check_output("git diff", shell=True)
-    util.print_with_newlines(str(diff))
+    diff = subprocess.check_output(['git', 'diff'], text=True)
+    print(diff)
 
     question = 'Proceed by pushing diff to {}?'.format(branch)
     if prompt_until_answer(question, True):
         subprocess.call('git add -u', shell=True)
-        subprocess.call("git commit -m '{}'".format(commit_msg),
-                        shell=True)
+        subprocess.call(['git', 'commit', '-m', commit_msg])
         subprocess.call("git push origin {}".format(branch), shell=True)
     else:
         print("Exiting during code level version updates due to " +
@@ -125,7 +124,7 @@ def replace_func(func, file_name):
     write_file.write(file_contents)
     write_file.close()
 
-    os.rename(tmp_file_name, file_name)
+    os.replace(tmp_file_name, file_name)
 
 
 # String -> String

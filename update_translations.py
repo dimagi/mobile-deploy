@@ -109,8 +109,7 @@ def commit_and_push_new_branch(new_version_number, new_branch, new_file_name):
 
     commit_message = ('Auto-commit: Update translations for ' +
                       'CommCare release {}').format(new_version_number)
-    subprocess.call("git commit -m '{}'".format(commit_message),
-                    shell=True)
+    subprocess.call(['git', 'commit', '-m', commit_message])
     subprocess.call('git push origin {}'.format(new_branch), shell=True)
     pr_url = '{}{}'.format(github_url, new_branch)
     print(('An updated translations file has been pushed to GitHub ' +
