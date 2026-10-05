@@ -1,2 +1,3 @@
-github3.py == 1.3.0
+github3.py==1.3.0
 python-jenkins==0.4.13
+setuptools<81

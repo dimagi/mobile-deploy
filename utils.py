@@ -1,5 +1,6 @@
 import subprocess
 import os
+import re
 from deploy_config import BASE_DIR, BRANCH_BASE
 import sys
 from importlib import metadata
@@ -90,21 +91,31 @@ def checkout_ref(repo, ref):
 
 
 def assert_packages():
-    for name, required in get_dependencies():
+    for name, operator, required in get_dependencies():
         try:
             installed = metadata.version(name)
         except metadata.PackageNotFoundError:
             installed = None
-        if installed != required:
+        if installed is None or not version_satisfies(installed, operator,
+                                                      required):
             print("Missing a library requirement, please update:")
-            print("{}=={} required, found {}".format(name, required,
-                                                     installed))
+            print("{}{}{} required, found {}".format(name, operator,
+                                                     required, installed))
             sys.exit(0)
 
 
-# None -> [List-of (String, String)]
+# String String String -> Boolean
+def version_satisfies(installed, operator, required):
+    def as_tuple(v):
+        return tuple(int(part) for part in re.findall(r'\d+', v)[:3])
+    if operator == '==':
+        return as_tuple(installed) == as_tuple(required)
+    return as_tuple(installed) < as_tuple(required)
+
+
+# None -> [List-of (String, String, String)]
 def get_dependencies():
     with open("requirements.txt", 'r') as f:
         lines = [line.strip() for line in f.read().splitlines()]
-    return [tuple(part.strip() for part in line.split('=='))
+    return [re.match(r'([\w.\-]+)\s*(==|<)\s*(\S+)', line).groups()
             for line in lines if line]

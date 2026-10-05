@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python3
 import jenkins
 import re
 import subprocess
@@ -206,10 +206,9 @@ def update_master_build_number(job_name, increment_by):
 
     next_build_number = int(current_build_number) + increment_by
 
-    print("INFO\tupdating {} build # " +
-          "from {} to {}".format(job_name,
-                                 current_build_number,
-                                 next_build_number))
+    print("INFO\tupdating {} build # from {} to {}".format(job_name,
+                                                        current_build_number,
+                                                        next_build_number))
 
     create_next_build_number_file(next_build_number)
     upload_next_build_number(job_name, next_build_number)

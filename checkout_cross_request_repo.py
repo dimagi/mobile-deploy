@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 """
 Checkout target repo with branch noted as cross-request dependency for a given
@@ -18,8 +18,8 @@ def get_cross_branch(target_repo, source_pr):
     Get target repo branch name that was labeled as cross-requested in source
     pull request.
     """
-    url = "{}/pull/(\d+)".format(target_repo.html_url)
-    search_pattern = "[Cc]ross-?(request)?:?(\s?){}".format(url)
+    url = r"{}/pull/(\d+)".format(target_repo.html_url)
+    search_pattern = r"[Cc]ross-?(request)?:?(\s?){}".format(url)
     cross_request_search = re.search(search_pattern, source_pr.body)
 
     if cross_request_search:
