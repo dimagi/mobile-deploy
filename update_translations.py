@@ -96,16 +96,25 @@ def create_updated_translations_file(new_text_blocks, new_version_number):
             if i < num_blocks-1:
                 f.write('\n\n')
 
-    # Create a simlink so that the unversioned file is equivalent to the latest versioned one
-    os.remove(unversioned_translations_filename)
-    os.symlink(versioned_filename, unversioned_translations_filename)
+    point_symlink_at(unversioned_translations_filename, versioned_filename)
 
     return versioned_filename
 
 
+def point_symlink_at(link_path, target):
+    """
+    Point a symlink at target by writing it to the git index directly, so the
+    commit holds a real symlink without needing symlink support on the OS
+    """
+    blob = subprocess.check_output(['git', 'hash-object', '-w', '--stdin'],
+                                   input=target, text=True).strip()
+    subprocess.check_call(['git', 'update-index', '--cacheinfo',
+                           '120000,{},{}'.format(blob, link_path)])
+    subprocess.check_call(['git', 'checkout', '--', link_path])
+
+
 def commit_and_push_new_branch(new_version_number, new_branch, new_file_name):
-    subprocess.call('git add {}'.format(new_file_name), shell=True)
-    subprocess.call('git add {}'.format(unversioned_translations_filename), shell=True)
+    subprocess.call(['git', 'add', new_file_name])
 
     commit_message = ('Auto-commit: Update translations for ' +
                       'CommCare release {}').format(new_version_number)
