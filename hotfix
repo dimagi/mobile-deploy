@@ -12,7 +12,7 @@ from deploy_config import REPOS, BRANCH_BASE
 
 HELP_MSG = """'create' creates the hotfix branches from the latest release tag.
 'release' creates release tags and updates jenkins job to use it.
-'finalize' updates jenkins hotfix version number and deletes release branch.
+'finalize' updates the jenkins hotfix version number. It does not delete any branches.
 'resume' checkouts out the relevant hotfix branches.
 'help' prints this message."""
 
