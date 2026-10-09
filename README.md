@@ -49,6 +49,15 @@ The workflow:
 
 In case you need to do work on other branches while in the middle of a hotfix, you can always resume hotfix work by running `hotfix resume`. This will checkout hotfix branches created in the `create` step and latest release tags for the remaining branches.
 
+What each command does. `X.Y.N` is the `VERSION` of the `commcare-android-X.Y` Jenkins job, the release just before the one `master` is building.
+
+| Command | What it does |
+|---|---|
+| `hotfix create` | Asks which repos need the hotfix, cuts `commcare_X.Y` from each one's latest release tag and pushes it. Then pushes a version bump to the commcare-android manifest after showing you the diff, and points those repos' `X.Y` Jenkins jobs at the branch. |
+| `hotfix resume` | Changes only your local clones: fetches tags, checks out the open hotfix branches, and the latest release tag in the other repos. |
+| `hotfix release` | Tags `commcare_X.Y.N` on each open hotfix branch, pushes the tag and points that repo's `X.Y` Jenkins job at it. It doesn't start a build. |
+| `hotfix finalize` | Bumps `VERSION` on the `commcare-android-X.Y` Jenkins job to the next hotfix number. It doesn't delete any branches. |
+
 ## TODO
 * auto-compile release notes from PRs
 * would be nice to automatically name and lock in jenkins builds triggered by the deploy scripts
