@@ -1,16 +1,17 @@
 import subprocess
 import os
+import re
 from deploy_config import BASE_DIR, BRANCH_BASE
-import pkg_resources
-from pkg_resources import VersionConflict
 import sys
+from importlib import metadata
 
 
 # None -> None
 def pull_masters(repos):
     for repo in repos:
         chdir_repo(repo)
-        subprocess.call('git pull origin master', shell=True)
+        subprocess.check_call(['git', 'checkout', 'master'])
+        subprocess.check_call(['git', 'pull', '--ff-only', 'origin', 'master'])
         chdir_base()
 
 
@@ -28,11 +29,10 @@ def chdir_base():
 def unstaged_changes_present(repos):
     for repo in repos:
         chdir_repo(repo)
-        cmd = "git status -s | sed '/^??/d'"
-        cmd_result = subprocess.check_output(cmd, shell=True)
-        if b'' != cmd_result:
-            return True
+        status = subprocess.check_output(['git', 'status', '-s'], text=True)
         chdir_base()
+        if any(not line.startswith('??') for line in status.splitlines()):
+            return True
     return False
 
 
@@ -60,29 +60,21 @@ def branch_exists(child_directory, branch_name):
         chdir_base()
 
 
-# String -> None
-def print_with_newlines(msg):
-    for line in msg.split('\\n'):
-        print(line)
-
-
 # String String -> Integer
 def get_last_hotfix_number_in_repo(repo, version_short_str):
     """
     Find the latest hotfix by looking at remote tag names
     """
     chdir_repo(repo)
-    filter_tag_cmd = "awk '{ print $2 }'"
-    filter_hotfix_number = "awk -F'.' '{ print $3 }'"
-
     tag = "{}{}".format(BRANCH_BASE, version_short_str)
-    git_cmd = "git ls-remote origin 'refs/tags/{}.*'".format(tag)
-    get_hotfix_cmd = "{} | {} | {}".format(git_cmd,
-                                           filter_tag_cmd,
-                                           filter_hotfix_number)
-    result = subprocess.check_output(get_hotfix_cmd, shell=True)
-    hotfixes = list(map(int, filter(lambda x: x.isdigit(),
-                                    result.split(b'\n'))))
+    result = subprocess.check_output(
+        ['git', 'ls-remote', 'origin', 'refs/tags/{}.*'.format(tag)],
+        text=True)
+    hotfixes = []
+    for line in result.splitlines():
+        hotfix = line.split()[-1].split('.')[-1]
+        if hotfix.isdigit():
+            hotfixes.append(int(hotfix))
     hotfixes.sort()
     chdir_base()
 
@@ -99,15 +91,31 @@ def checkout_ref(repo, ref):
 
 
 def assert_packages():
-    try:
-        pkg_resources.require(get_dependencies())
-    except VersionConflict as e:
-        print("Missing a library requirement, please update:")
-        print(str(e))
-        sys.exit(0)
+    for name, operator, required in get_dependencies():
+        try:
+            installed = metadata.version(name)
+        except metadata.PackageNotFoundError:
+            installed = None
+        if installed is None or not version_satisfies(installed, operator,
+                                                      required):
+            print("Missing a library requirement, please update:")
+            print("{}{}{} required, found {}".format(name, operator,
+                                                     required, installed))
+            sys.exit(0)
 
 
-# None -> [List-of String]
+# String String String -> Boolean
+def version_satisfies(installed, operator, required):
+    def as_tuple(v):
+        return tuple(int(part) for part in re.findall(r'\d+', v)[:3])
+    if operator == '==':
+        return as_tuple(installed) == as_tuple(required)
+    return as_tuple(installed) < as_tuple(required)
+
+
+# None -> [List-of (String, String, String)]
 def get_dependencies():
     with open("requirements.txt", 'r') as f:
-        return f.read().split("\n")
+        lines = [line.strip() for line in f.read().splitlines()]
+    return [re.match(r'([\w.\-]+)\s*(==|<)\s*(\S+)', line).groups()
+            for line in lines if line]

@@ -1,16 +1,18 @@
-#!/bin/python
+#!/usr/bin/env python3
 
 import sys
 
 import jenkins_utils
 import git_utils
+import check
 
 from update_translations import update_translations
 from utils import assert_packages
 
 from deploy_config import BRANCH_BASE
 
-HELP_MSG = """'create' creates the release branches and jobs.
+HELP_MSG = """'check' reports what 'create' would see, without changing anything.
+'create' creates the release branches and jobs.
 'release' creates release tags and updates jenkins job to use it.
 'finalize' updates jenkins hotfix version number and deletes release branch
 'help' prints this message."""
@@ -62,7 +64,9 @@ def main():
 
     command = sys.argv[1]
 
-    if command == 'create':
+    if command == 'check':
+        check.run_checks()
+    elif command == 'create':
         create_release()
     elif command == 'release':
         deploy_release()

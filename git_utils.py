@@ -1,4 +1,4 @@
-#!/bin/python
+#!/usr/bin/env python3
 
 import subprocess
 import os
@@ -25,7 +25,7 @@ def create_branches_and_update_versions(branch_base, version):
         raise Exception("commcare_{} branch already exists".format(version))
 
     create_release_branches(branch_name)
-    update_version_numbers()
+    update_version_numbers(version)
     # enable for J2ME build
     # mark_version_as_alpha(branch_name)
 
@@ -53,14 +53,14 @@ def create_branch(repo, branch_name):
         util.chdir_base()
 
 
-# None -> None
-def update_version_numbers():
-    update_commcare_version_numbers()
+# String -> None
+def update_version_numbers(release_version):
+    update_commcare_version_numbers(release_version)
     update_android_version_numbers()
 
 
-# None -> None
-def update_commcare_version_numbers():
+# String -> None
+def update_commcare_version_numbers(release_version):
     """
     Update version numbers in build.properties and CommCareConfigEngin on
     master.
@@ -68,7 +68,10 @@ def update_commcare_version_numbers():
     util.chdir_repo('commcare-core')
     subprocess.call('git checkout master', shell=True)
 
-    replace_func(replace_config_engine_version,
+    major, minor = map(int, release_version.split('.'))
+    replace_func(lambda contents: replace_config_engine_version(contents,
+                                                                major,
+                                                                minor + 1),
                  'src/cli/java/org/commcare/util/engine/CommCareConfigEngine.java')
 
     review_and_commit_changes('master',
@@ -94,14 +97,13 @@ def update_commcare_hotfix_version_numbers(branch):
 
 # String String -> None
 def review_and_commit_changes(branch, commit_msg):
-    diff = subprocess.check_output("git diff", shell=True)
-    util.print_with_newlines(str(diff))
+    diff = subprocess.check_output(['git', 'diff'], text=True)
+    print(diff)
 
     question = 'Proceed by pushing diff to {}?'.format(branch)
     if prompt_until_answer(question, True):
         subprocess.call('git add -u', shell=True)
-        subprocess.call("git commit -m '{}'".format(commit_msg),
-                        shell=True)
+        subprocess.call(['git', 'commit', '-m', commit_msg])
         subprocess.call("git push origin {}".format(branch), shell=True)
     else:
         print("Exiting during code level version updates due to " +
@@ -125,7 +127,7 @@ def replace_func(func, file_name):
     write_file.write(file_contents)
     write_file.close()
 
-    os.rename(tmp_file_name, file_name)
+    os.replace(tmp_file_name, file_name)
 
 
 # String -> String
@@ -157,23 +159,20 @@ def replace_build_prop(file_contents, get_new_version):
                                  'app.version={}'.format(next_minor))
 
 
-# String -> String
-def replace_config_engine_version(file_contents):
-    majorVersionPattern = re.compile(r'MAJOR_VERSION = (\d+);')
-    minorVersionPattern = re.compile(r'MINOR_VERSION = (\d+);')
-    majorResult = majorVersionPattern.search(file_contents)
-    minorResult = minorVersionPattern.search(file_contents)
-    if minorResult is None or majorResult is None:
+# String Integer Integer -> String
+def replace_config_engine_version(file_contents, major, minor):
+    major_pattern = re.compile(r'MAJOR_VERSION = \d+;')
+    minor_pattern = re.compile(r'MINOR_VERSION = (\d+);')
+    minor_result = minor_pattern.search(file_contents)
+    if major_pattern.search(file_contents) is None or minor_result is None:
         raise Exception("Couldn't parse version in CommCareConfigEngine")
-    major = int(majorResult.groups()[0])
-    minor = int(minorResult.groups()[0])
+    print('CommCareConfigEngine: replacing MINOR_VERSION {} with {}'.format(
+        minor_result.group(1), minor))
 
-    platform_pattern = 'CommCarePlatform({}, {})'.format(major, minor)
-    new_platform = 'CommCarePlatform({}, {})'.format(major, minor + 1)
-    print('CommCareConfigEngine: replacing {} with {}'.format(platform_pattern,
-                                                              new_platform))
-
-    return file_contents.replace(platform_pattern, new_platform)
+    file_contents = major_pattern.sub('MAJOR_VERSION = {};'.format(major),
+                                      file_contents, count=1)
+    return minor_pattern.sub('MINOR_VERSION = {};'.format(minor),
+                             file_contents, count=1)
 
 
 # None -> None
