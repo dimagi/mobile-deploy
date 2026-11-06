@@ -9,7 +9,7 @@ import github3
 
 
 def main():
-    repo = github3.repository('dimagi', 'commcare-android')
+    repo = github3.GitHub().repository('dimagi', 'commcare-android')
     latest_release = repo.latest_release()
     apk_assets = [a for a in latest_release.assets() if is_release_apk(a.name)]
     print(apk_assets[0].browser_download_url)

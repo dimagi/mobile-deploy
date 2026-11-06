@@ -18,8 +18,8 @@ def get_cross_branch(target_repo, source_pr):
     Get target repo branch name that was labeled as cross-requested in source
     pull request.
     """
-    url = "{}/pull/(\d+)".format(target_repo.html_url)
-    search_pattern = "[Cc]ross-?(request)?:?(\s?){}".format(url)
+    url = r"{}/pull/(\d+)".format(target_repo.html_url)
+    search_pattern = r"[Cc]ross-?(request)?:?(\s?){}".format(url)
     cross_request_search = re.search(search_pattern, source_pr.body)
 
     if cross_request_search:
@@ -35,7 +35,7 @@ def checkout_pr_branch(local_parent_dir, pr_number,
                        source_repo_name, target_repo_name, github_token):
     os.chdir(local_parent_dir)
 
-    github = github3
+    github = github3.GitHub()
 
     # Authenticate if a GitHub token is provided
     if github_token:
